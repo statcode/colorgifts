@@ -301,7 +301,6 @@ export default function CreateBook() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authView, setAuthView] = useState<"sign-up" | "sign-in">("sign-up");
   const pendingDataRef = useRef<Step1Values | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<"digital" | "print" | null>(null);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [orderStep, setOrderStep] = useState<"form" | "generating-pdf" | "placing-order" | "confirmed">("form");
   const [orderResult, setOrderResult] = useState<LuluOrderResponse | null>(null);
@@ -540,25 +539,7 @@ export default function CreateBook() {
   };
 
   const handleOrder = async () => {
-    if (!selectedFormat || !bookId) return;
-
-    if (selectedFormat === "digital") {
-      setIsProcessingOrder(true);
-      setOrderStep("generating-pdf");
-      try {
-        await generatePdf.mutateAsync({ id: bookId });
-        await updateBook.mutateAsync({ id: bookId, data: { status: BookStatus.ordered } });
-        toast({ title: "Your PDF is ready!", description: "Your coloring book has been prepared." });
-        setOrderStep("confirmed");
-        setOrderResult(null);
-      } catch (err) {
-        toast({ title: "Failed to generate PDF", description: (err as Error).message, variant: "destructive" });
-        setOrderStep("form");
-      } finally {
-        setIsProcessingOrder(false);
-      }
-      return;
-    }
+    if (!bookId) return;
 
     const required = ["name", "street1", "city", "country_code", "postcode", "phone_number", "email"] as const;
     const missing = required.filter(f => !shippingAddress[f]?.trim());
@@ -1109,13 +1090,9 @@ export default function CreateBook() {
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
                   <Check className="w-10 h-10 text-green-600" />
                 </div>
-                <h1 className="text-4xl font-serif font-bold mb-3">
-                  {selectedFormat === "print" ? "Order Confirmed!" : "Your PDF is Ready!"}
-                </h1>
+                <h1 className="text-4xl font-serif font-bold mb-3">Order Confirmed!</h1>
                 <p className="text-lg text-muted-foreground mb-8">
-                  {selectedFormat === "print"
-                    ? "Your personalized coloring book is heading to the printer. You'll receive a shipping notification by email."
-                    : "Your coloring book PDF has been generated and is ready to print at home."}
+                  Your personalized coloring book is heading to the printer. You'll receive a shipping notification by email.
                 </p>
 
                 {orderResult && (
@@ -1187,65 +1164,8 @@ export default function CreateBook() {
                 </div>
               </div>
 
-              {/* Format Selection */}
-              <div className="space-y-3 mb-6">
-                <button
-                  type="button"
-                  onClick={() => setSelectedFormat("digital")}
-                  className={cn(
-                    "w-full text-left flex items-start p-5 rounded-2xl border-2 cursor-pointer transition-all",
-                    selectedFormat === "digital"
-                      ? "border-primary bg-primary/5 shadow-md"
-                      : "border-border hover:border-primary/50 hover:bg-muted/30 bg-card"
-                  )}
-                >
-                  <div className="flex items-center h-6 mr-4">
-                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", selectedFormat === "digital" ? "border-primary bg-primary" : "border-input")}>
-                      {selectedFormat === "digital" && <Check className="w-3 h-3 text-primary-foreground" />}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                        <FileDown className="w-5 h-5 text-muted-foreground" /> Digital PDF
-                      </h3>
-                      <span className="font-bold text-lg">{price}</span>
-                    </div>
-                    <p className="text-muted-foreground text-sm">Instant download. Print at home as many times as you like.</p>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedFormat("print")}
-                  className={cn(
-                    "w-full text-left flex items-start p-5 rounded-2xl border-2 cursor-pointer transition-all relative overflow-hidden",
-                    selectedFormat === "print"
-                      ? "border-accent bg-accent/5 shadow-md"
-                      : "border-border hover:border-accent/50 hover:bg-muted/30 bg-card"
-                  )}
-                >
-                  <div className="absolute top-0 right-0 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
-                  <div className="flex items-center h-6 mr-4">
-                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", selectedFormat === "print" ? "border-accent bg-accent" : "border-input")}>
-                      {selectedFormat === "print" && <Check className="w-3 h-3 text-accent-foreground" />}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                        <BookIcon className="w-5 h-5 text-muted-foreground" /> Premium Printed Book
-                      </h3>
-                      <span className="font-bold text-lg">{price}</span>
-                    </div>
-                    <p className="text-muted-foreground text-sm">Beautifully bound 8.5×11" softcover, printed by Lulu Press. Ships in 3–5 business days. Includes digital PDF.</p>
-                  </div>
-                </button>
-              </div>
-
-              {/* Shipping Address Form — shown when print is selected */}
-              {selectedFormat === "print" && (
-                <div className="bg-card rounded-2xl border border-border p-6 shadow-sm mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+              {/* Shipping Address Form */}
+              <div className="bg-card rounded-2xl border border-border p-6 shadow-sm mb-6">
                   <h3 className="font-serif font-bold text-xl mb-5">Shipping Address</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
@@ -1356,21 +1276,20 @@ export default function CreateBook() {
                     </div>
                   </div>
                 </div>
-              )}
 
               {/* Order Summary */}
               <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
                 <div className="flex justify-between mb-2 text-muted-foreground text-sm">
                   <span>{pageCount} pages · {tierLabel}</span>
-                  <span>{selectedFormat ? price : "$0.00"}</span>
+                  <span>{price}</span>
                 </div>
                 <div className="flex justify-between mb-4 text-muted-foreground text-sm">
                   <span>Shipping</span>
-                  <span>{selectedFormat === "print" ? "Calculated at checkout" : "—"}</span>
+                  <span>Calculated at checkout</span>
                 </div>
                 <div className="flex justify-between pt-4 border-t border-border font-bold text-xl mb-6">
                   <span>Total</span>
-                  <span>{selectedFormat ? price : "$0.00"}{selectedFormat === "print" ? " + shipping" : ""}</span>
+                  <span>{price} + shipping</span>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
@@ -1379,23 +1298,15 @@ export default function CreateBook() {
                 </div>
 
                 <Button
-                  className="w-full h-14 rounded-full text-lg shadow-lg"
+                  className="w-full h-14 rounded-full text-lg shadow-lg bg-accent hover:bg-accent/90 text-accent-foreground"
                   size="lg"
-                  disabled={!selectedFormat || isProcessingOrder}
+                  disabled={isProcessingOrder}
                   onClick={handleOrder}
-                  style={{
-                    backgroundColor: selectedFormat === "print" ? "hsl(var(--accent))" : "hsl(var(--primary))",
-                    color: selectedFormat === "print" ? "hsl(var(--accent-foreground))" : "hsl(var(--primary-foreground))",
-                  }}
                 >
                   {isProcessingOrder ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : selectedFormat === "print" ? (
-                    "Place Print Order"
-                  ) : selectedFormat === "digital" ? (
-                    "Generate PDF"
                   ) : (
-                    "Select a format above"
+                    "Place Print Order"
                   )}
                 </Button>
               </div>
