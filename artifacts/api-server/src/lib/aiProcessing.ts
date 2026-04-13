@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 
@@ -11,9 +11,9 @@ const storage = new ObjectStorageService();
 
 function getStylePrompt(style: string): string {
   const prompts: Record<string, string> = {
-    simple: "Convert this image into a simple children's coloring page. Use very thick, bold black outlines. Keep shapes large and simple. Remove all color, shading, and detail. Suitable for ages 3-5. White background, black lines only, no gray shading.",
-    cartoon: "Convert this image into a cartoon-style coloring page for children. Use bold black outlines with medium detail. Include character features but keep them fun and rounded. Remove all color. White background, clean black line art only, no gray areas.",
-    detailed: "Convert this image into a detailed coloring page. Use fine black outlines with intricate detail. Include realistic features and textures. Remove all color and shading. White background, black line art only, high-contrast outlines, no gray areas.",
+    simple: "Transform this exact photo into a simple children's coloring book page. Preserve the specific subjects, people, animals, and scene from this photo. Use very thick bold black outlines only. Keep shapes large and simple. White background, pure black line art only, absolutely no gray shading, no color, no fill.",
+    cartoon: "Transform this exact photo into a cartoon-style coloring book page. Preserve all specific subjects, faces, animals, and elements from this photo. Use bold black outlines with clean cartoon styling. White background, pure black line art only, no gray shading, no color, no fill.",
+    detailed: "Transform this exact photo into a detailed coloring book page. Faithfully preserve every subject, person, animal, and element from this photo. Use fine black outlines with rich detail and texture. White background, pure black line art only, no gray shading, no color, no fill.",
   };
   return prompts[style] ?? prompts.simple;
 }
@@ -26,10 +26,12 @@ export async function generateColoringPage(
 
   logger.info({ originalObjectPath, style }, "Starting coloring page generation");
 
-  let imageSource: { url: string } | { base64: string; mediaType: string };
+  let imageBuffer: Buffer;
 
   if (originalObjectPath.startsWith("http")) {
-    imageSource = { url: originalObjectPath };
+    const fetchResponse = await fetch(originalObjectPath);
+    if (!fetchResponse.ok) throw new Error(`Failed to fetch image: ${fetchResponse.statusText}`);
+    imageBuffer = Buffer.from(await fetchResponse.arrayBuffer());
   } else {
     const cleanPath = originalObjectPath.startsWith("/objects/")
       ? originalObjectPath
@@ -37,13 +39,15 @@ export async function generateColoringPage(
 
     const file = await storage.getObjectEntityFile(cleanPath);
     const [fileContents] = await file.download();
-    const base64 = fileContents.toString("base64");
-    imageSource = { base64, mediaType: "image/jpeg" };
+    imageBuffer = fileContents;
   }
 
-  const response = await openai.images.generate({
+  const imageFile = await toFile(imageBuffer, "photo.png", { type: "image/png" });
+
+  const response = await openai.images.edit({
     model: "gpt-image-1",
-    prompt: `${prompt} The image to transform: a personal photo.`,
+    image: imageFile,
+    prompt,
     size: "1024x1024",
   });
 
@@ -52,13 +56,13 @@ export async function generateColoringPage(
     throw new Error("No image data returned from AI");
   }
 
-  const imageBuffer = Buffer.from(imageData.b64_json, "base64");
+  const resultBuffer = Buffer.from(imageData.b64_json, "base64");
 
   const uploadUrl = await storage.getObjectEntityUploadURL();
 
   const uploadResponse = await fetch(uploadUrl, {
     method: "PUT",
-    body: imageBuffer,
+    body: resultBuffer,
     headers: {
       "Content-Type": "image/png",
     },
