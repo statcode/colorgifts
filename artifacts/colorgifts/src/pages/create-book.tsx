@@ -296,6 +296,7 @@ export default function CreateBook() {
   const [step, setStep] = useState(1);
   const [bookId, setBookId] = useState<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadSource, setUploadSource] = useState<"device" | "facebook" | "dropbox" | "googledrive">("device");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -448,6 +449,114 @@ export default function CreateBook() {
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
+
+  const addFilesFromUrls = useCallback(async (urls: { url: string; name: string }[]) => {
+    try {
+      const fetched = await Promise.all(
+        urls.map(async ({ url, name }) => {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          const ext = blob.type.split("/")[1] || "jpg";
+          return new File([blob], name || `photo.${ext}`, { type: blob.type });
+        })
+      );
+      setFiles(prev => [...prev, ...fetched.filter(f => f.type.startsWith("image/"))]);
+    } catch {
+      toast({ title: "Failed to load photos", description: "Could not fetch the selected files.", variant: "destructive" });
+    }
+  }, [toast]);
+
+  const openDropboxChooser = useCallback(() => {
+    const appKey = import.meta.env.VITE_DROPBOX_APP_KEY;
+    if (!appKey) {
+      toast({ title: "Dropbox not configured", description: "Set VITE_DROPBOX_APP_KEY to enable Dropbox uploads.", variant: "destructive" });
+      return;
+    }
+    const existing = document.getElementById("dropboxjs");
+    const launch = () => {
+      (window as any).Dropbox.choose({
+        success: (files: { link: string; name: string }[]) => {
+          addFilesFromUrls(files.map(f => ({ url: f.link, name: f.name })));
+        },
+        linkType: "direct",
+        multiselect: true,
+        extensions: [".jpg", ".jpeg", ".png", ".webp"],
+      });
+    };
+    if (existing) { launch(); return; }
+    const script = document.createElement("script");
+    script.src = "https://www.dropbox.com/static/api/2/dropins.js";
+    script.id = "dropboxjs";
+    script.setAttribute("data-app-key", appKey);
+    script.onload = launch;
+    document.body.appendChild(script);
+  }, [addFilesFromUrls, toast]);
+
+  const openGoogleDrivePicker = useCallback(() => {
+    const apiKey = import.meta.env.VITE_GOOGLE_API_KEY;
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!apiKey || !clientId) {
+      toast({ title: "Google Drive not configured", description: "Set VITE_GOOGLE_API_KEY and VITE_GOOGLE_CLIENT_ID to enable Google Drive uploads.", variant: "destructive" });
+      return;
+    }
+    const launch = () => {
+      const gapi = (window as any).gapi;
+      gapi.load("auth2:picker", () => {
+        gapi.auth2.getAuthInstance()?.signIn().then(() => {
+          const token = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+          const picker = new (window as any).google.picker.PickerBuilder()
+            .addView(new (window as any).google.picker.View((window as any).google.picker.ViewId.PHOTOS))
+            .setOAuthToken(token)
+            .setDeveloperKey(apiKey)
+            .setCallback((data: any) => {
+              if (data.action === "picked") {
+                const items = data.docs.map((d: any) => ({
+                  url: `https://www.googleapis.com/drive/v3/files/${d.id}?alt=media&key=${apiKey}`,
+                  name: d.name,
+                }));
+                addFilesFromUrls(items);
+              }
+            })
+            .build();
+          picker.setVisible(true);
+        });
+      });
+    };
+    if ((window as any).gapi) { launch(); return; }
+    const script = document.createElement("script");
+    script.src = "https://apis.google.com/js/api.js";
+    script.onload = launch;
+    document.body.appendChild(script);
+  }, [addFilesFromUrls, toast]);
+
+  const openFacebookPicker = useCallback(() => {
+    const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
+    if (!appId) {
+      toast({ title: "Facebook not configured", description: "Set VITE_FACEBOOK_APP_ID to enable Facebook photo imports.", variant: "destructive" });
+      return;
+    }
+    const launch = () => {
+      const FB = (window as any).FB;
+      FB.login((loginResp: any) => {
+        if (!loginResp.authResponse) return;
+        FB.api("/me/photos/uploaded", { fields: "images", limit: 100 }, (data: any) => {
+          if (!data?.data) return;
+          const urls = data.data.flatMap((photo: any) =>
+            photo.images?.slice(0, 1).map((img: any) => ({ url: img.source, name: `fb_${photo.id}.jpg` })) ?? []
+          );
+          addFilesFromUrls(urls);
+        });
+      }, { scope: "user_photos" });
+    };
+    if ((window as any).FB) { launch(); return; }
+    (window as any).fbAsyncInit = () => {
+      (window as any).FB.init({ appId, version: "v19.0", xfbml: false, cookie: false });
+      launch();
+    };
+    const script = document.createElement("script");
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    document.body.appendChild(script);
+  }, [addFilesFromUrls, toast]);
 
   const handleUploadAndGenerate = async () => {
     if (!bookId || files.length === 0) return;
@@ -737,42 +846,157 @@ export default function CreateBook() {
               <p className="text-muted-foreground text-lg">Upload 2–40 photos — each becomes a coloring page. Clear faces and simple backgrounds work best.</p>
             </div>
 
-            <Card className="p-8 rounded-[2rem] border-border shadow-sm mb-8">
-              <div 
-                className="border-4 border-dashed border-border rounded-3xl p-12 text-center bg-muted/20 hover:bg-muted/50 transition-colors cursor-pointer relative overflow-hidden group"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleFileDrop}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  multiple 
-                  accept="image/jpeg,image/png,image/webp" 
-                  onChange={handleFileInput} 
-                />
-                
-                <div className="w-20 h-20 bg-background rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm group-hover:scale-110 transition-transform">
-                  <UploadCloud className="w-10 h-10 text-primary" />
+            {/* Source picker card */}
+            <Card className="rounded-[2rem] border-border shadow-sm mb-8 overflow-hidden">
+              <div className="flex min-h-[420px]">
+
+                {/* Left sidebar — source selector */}
+                <div className="w-56 flex-shrink-0 bg-muted/40 border-r border-border flex flex-col py-3">
+                  {([
+                    {
+                      id: "device",
+                      label: "My Device",
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                      ),
+                    },
+                    {
+                      id: "facebook",
+                      label: "Facebook",
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      ),
+                    },
+                    {
+                      id: "dropbox",
+                      label: "Dropbox",
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M12 6.036l-6 3.826 6 3.826-6 3.826L0 13.688l6-3.826-6-3.826L6 2.21l6 3.826zM6.032 18.331l6-3.826 6 3.826-6 3.826-6-3.826zm6-4.643l6-3.826-6-3.826 6-3.826 6 3.826-6 3.826z"/></svg>
+                      ),
+                    },
+                    {
+                      id: "googledrive",
+                      label: "Google Drive",
+                      icon: (
+                        <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M6.28 3l5.72 9.9L6.28 21H1.72L7.44 12 1.72 3h4.56zm5.44 0h4.56l5.72 9H12l-.28-.49zm4.56 18H6.28l2.72-4.5h10.44L22 21h-5.72z" fillRule="evenodd"/></svg>
+                      ),
+                    },
+                  ] as const).map(src => (
+                    <button
+                      key={src.id}
+                      type="button"
+                      onClick={() => setUploadSource(src.id)}
+                      className={cn(
+                        "flex items-center gap-3 px-5 py-3.5 text-left transition-colors text-sm font-medium",
+                        uploadSource === src.id
+                          ? "bg-background text-foreground border-r-2 border-primary shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      )}
+                    >
+                      <span className={uploadSource === src.id ? "text-primary" : ""}>{src.icon}</span>
+                      {src.label}
+                    </button>
+                  ))}
                 </div>
-                <h3 className="text-2xl font-serif font-bold mb-2">Drag & drop photos here</h3>
-                <p className="text-muted-foreground">or click to browse from your device</p>
+
+                {/* Right content area */}
+                <div className="flex-1 flex flex-col p-8">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileInput}
+                  />
+
+                  {uploadSource === "device" && (
+                    <div
+                      className="flex-1 border-3 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-center bg-muted/10 hover:bg-muted/30 transition-colors cursor-pointer group"
+                      style={{ borderWidth: "3px", borderStyle: "dashed" }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={handleFileDrop}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform">
+                        <UploadCloud className="w-8 h-8 text-primary" />
+                      </div>
+                      <h3 className="text-xl font-serif font-bold mb-1">Drag & drop photos here</h3>
+                      <p className="text-muted-foreground text-sm mb-5">JPG, PNG or WebP</p>
+                      <Button type="button" size="sm" className="rounded-full px-6" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
+                        Choose files
+                      </Button>
+                    </div>
+                  )}
+
+                  {uploadSource === "facebook" && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center gap-5">
+                      <div className="w-16 h-16 rounded-full bg-[#1877F2]/10 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" className="w-8 h-8 text-[#1877F2]" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-serif font-bold mb-1">Import from Facebook</h3>
+                        <p className="text-muted-foreground text-sm">Select photos from your Facebook albums</p>
+                      </div>
+                      <Button className="rounded-full px-8 bg-[#1877F2] hover:bg-[#1877F2]/90 text-white" onClick={openFacebookPicker}>
+                        Connect Facebook
+                      </Button>
+                    </div>
+                  )}
+
+                  {uploadSource === "dropbox" && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center gap-5">
+                      <div className="w-16 h-16 rounded-full bg-[#0061FF]/10 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" className="w-8 h-8 text-[#0061FF]" fill="currentColor"><path d="M12 6.036l-6 3.826 6 3.826-6 3.826L0 13.688l6-3.826-6-3.826L6 2.21l6 3.826zM6.032 18.331l6-3.826 6 3.826-6 3.826-6-3.826zm6-4.643l6-3.826-6-3.826 6-3.826 6 3.826-6 3.826z"/></svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-serif font-bold mb-1">Import from Dropbox</h3>
+                        <p className="text-muted-foreground text-sm">Browse and select photos from your Dropbox</p>
+                      </div>
+                      <Button className="rounded-full px-8 bg-[#0061FF] hover:bg-[#0061FF]/90 text-white" onClick={openDropboxChooser}>
+                        Open Dropbox
+                      </Button>
+                    </div>
+                  )}
+
+                  {uploadSource === "googledrive" && (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center gap-5">
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                        <svg viewBox="0 0 87.3 78" className="w-8 h-8" fill="none">
+                          <path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3L27.5 53H0c0 1.55.4 3.1 1.2 4.5z" fill="#0066DA"/>
+                          <path d="M43.65 25L29.9 1.4c-1.35.8-2.5 1.9-3.3 3.3L1.2 48.5A9 9 0 000 53h27.5z" fill="#00AC47"/>
+                          <path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5H59.8L73.55 76.8z" fill="#EA4335"/>
+                          <path d="M43.65 25L57.4 1.4C56.05.6 54.5.2 52.95.2H34.35c-1.55 0-3.1.4-4.45 1.2z" fill="#00832D"/>
+                          <path d="M59.8 53H27.5L13.75 76.8c1.35.8 2.9 1.2 4.45 1.2h50.9c1.55 0 3.1-.4 4.45-1.2z" fill="#2684FC"/>
+                          <path d="M73.4 26.5l-12.65-21.8c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25 59.8 53h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#FFBA00"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-serif font-bold mb-1">Import from Google Drive</h3>
+                        <p className="text-muted-foreground text-sm">Select photos from your Google Drive</p>
+                      </div>
+                      <Button className="rounded-full px-8" onClick={openGoogleDrivePicker}>
+                        Connect Google Drive
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* Selected photos strip (shown below the picker when files are present) */}
               {files.length > 0 && (
-                <div className="mt-8">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-bold text-lg">
-                      {files.length} {files.length === 1 ? 'photo' : 'photos'} added
+                <div className="border-t border-border px-8 py-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-bold text-base">
+                      {files.length} {files.length === 1 ? "photo" : "photos"} selected
                       {files.length < 2 && (
                         <span className="ml-2 text-sm font-normal text-amber-600">({2 - files.length} more needed)</span>
                       )}
                       {files.length >= 2 && (
-                        <span className="ml-2 text-sm font-normal text-primary">✓ Minimum met</span>
+                        <span className="ml-2 text-sm font-normal text-primary">✓ Ready</span>
                       )}
                     </h4>
-                    <Button variant="ghost" size="sm" onClick={() => setFiles([])} className="text-muted-foreground hover:text-destructive">
+                    <Button variant="ghost" size="sm" onClick={() => setFiles([])} className="text-muted-foreground hover:text-destructive text-sm">
                       Clear all
                     </Button>
                   </div>
@@ -782,27 +1006,30 @@ export default function CreateBook() {
                       style={{ width: `${Math.min((files.length / 2) * 100, 100)}%` }}
                     />
                   </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
                     {files.map((file, i) => (
-                      <div key={i} className="relative group aspect-square rounded-2xl overflow-hidden border border-border shadow-sm">
-                        <img 
-                          src={URL.createObjectURL(file)} 
-                          alt="upload preview" 
-                          className="w-full h-full object-cover" 
-                        />
+                      <div key={i} className="relative group aspect-square rounded-xl overflow-hidden border border-border shadow-sm">
+                        <img src={URL.createObjectURL(file)} alt="upload preview" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Button 
-                            variant="destructive" 
-                            size="icon" 
-                            className="rounded-full w-8 h-8"
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="rounded-full w-7 h-7"
                             onClick={(e) => { e.stopPropagation(); removeFile(i); }}
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      className="aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <span className="text-2xl leading-none mb-1">+</span>
+                      <span className="text-xs">Add more</span>
+                    </button>
                   </div>
                 </div>
               )}
