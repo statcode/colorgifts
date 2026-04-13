@@ -21,8 +21,14 @@ import type {
   ColoringPage,
   CreateBookBody,
   CreatePhotoBody,
+  GeneratePdfResponse,
   GenerateResult,
   HealthStatus,
+  LuluCostBody,
+  LuluCostResponse,
+  LuluOrderBody,
+  LuluOrderResponse,
+  LuluStatusResponse,
   Photo,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -1015,6 +1021,351 @@ export const useRegeneratePage = <
   TContext
 > => {
   return useMutation(getRegeneratePageMutationOptions(options));
+};
+
+/**
+ * @summary Generate interior and cover PDFs for a book
+ */
+export const getGenerateBookPdfUrl = (id: number) => {
+  return `/api/books/${id}/generate-pdf`;
+};
+
+export const generateBookPdf = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GeneratePdfResponse> => {
+  return customFetch<GeneratePdfResponse>(getGenerateBookPdfUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateBookPdfMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateBookPdf>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateBookPdf>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateBookPdf"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateBookPdf>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateBookPdf(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateBookPdfMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateBookPdf>>
+>;
+
+export type GenerateBookPdfMutationError = ErrorType<void>;
+
+/**
+ * @summary Generate interior and cover PDFs for a book
+ */
+export const useGenerateBookPdf = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateBookPdf>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateBookPdf>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateBookPdfMutationOptions(options));
+};
+
+/**
+ * @summary Create a Lulu print order for a book
+ */
+export const getCreateLuluOrderUrl = (id: number) => {
+  return `/api/books/${id}/lulu-order`;
+};
+
+export const createLuluOrder = async (
+  id: number,
+  luluOrderBody: LuluOrderBody,
+  options?: RequestInit,
+): Promise<LuluOrderResponse> => {
+  return customFetch<LuluOrderResponse>(getCreateLuluOrderUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(luluOrderBody),
+  });
+};
+
+export const getCreateLuluOrderMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLuluOrder>>,
+    TError,
+    { id: number; data: BodyType<LuluOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createLuluOrder>>,
+  TError,
+  { id: number; data: BodyType<LuluOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createLuluOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createLuluOrder>>,
+    { id: number; data: BodyType<LuluOrderBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createLuluOrder(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateLuluOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createLuluOrder>>
+>;
+export type CreateLuluOrderMutationBody = BodyType<LuluOrderBody>;
+export type CreateLuluOrderMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a Lulu print order for a book
+ */
+export const useCreateLuluOrder = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLuluOrder>>,
+    TError,
+    { id: number; data: BodyType<LuluOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createLuluOrder>>,
+  TError,
+  { id: number; data: BodyType<LuluOrderBody> },
+  TContext
+> => {
+  return useMutation(getCreateLuluOrderMutationOptions(options));
+};
+
+/**
+ * @summary Get the Lulu print order status for a book
+ */
+export const getGetLuluOrderStatusUrl = (id: number) => {
+  return `/api/books/${id}/lulu-status`;
+};
+
+export const getLuluOrderStatus = async (
+  id: number,
+  options?: RequestInit,
+): Promise<LuluStatusResponse> => {
+  return customFetch<LuluStatusResponse>(getGetLuluOrderStatusUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLuluOrderStatusQueryKey = (id: number) => {
+  return [`/api/books/${id}/lulu-status`] as const;
+};
+
+export const getGetLuluOrderStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLuluOrderStatus>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLuluOrderStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLuluOrderStatusQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLuluOrderStatus>>
+  > = ({ signal }) => getLuluOrderStatus(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLuluOrderStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLuluOrderStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLuluOrderStatus>>
+>;
+export type GetLuluOrderStatusQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the Lulu print order status for a book
+ */
+
+export function useGetLuluOrderStatus<
+  TData = Awaited<ReturnType<typeof getLuluOrderStatus>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLuluOrderStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLuluOrderStatusQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Calculate Lulu print cost for a shipping address
+ */
+export const getCalculateLuluCostUrl = (id: number) => {
+  return `/api/books/${id}/lulu-cost`;
+};
+
+export const calculateLuluCost = async (
+  id: number,
+  luluCostBody: LuluCostBody,
+  options?: RequestInit,
+): Promise<LuluCostResponse> => {
+  return customFetch<LuluCostResponse>(getCalculateLuluCostUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(luluCostBody),
+  });
+};
+
+export const getCalculateLuluCostMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof calculateLuluCost>>,
+    TError,
+    { id: number; data: BodyType<LuluCostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof calculateLuluCost>>,
+  TError,
+  { id: number; data: BodyType<LuluCostBody> },
+  TContext
+> => {
+  const mutationKey = ["calculateLuluCost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof calculateLuluCost>>,
+    { id: number; data: BodyType<LuluCostBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return calculateLuluCost(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CalculateLuluCostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof calculateLuluCost>>
+>;
+export type CalculateLuluCostMutationBody = BodyType<LuluCostBody>;
+export type CalculateLuluCostMutationError = ErrorType<void>;
+
+/**
+ * @summary Calculate Lulu print cost for a shipping address
+ */
+export const useCalculateLuluCost = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof calculateLuluCost>>,
+    TError,
+    { id: number; data: BodyType<LuluCostBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof calculateLuluCost>>,
+  TError,
+  { id: number; data: BodyType<LuluCostBody> },
+  TContext
+> => {
+  return useMutation(getCalculateLuluCostMutationOptions(options));
 };
 
 /**

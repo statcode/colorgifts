@@ -27,6 +27,10 @@ export const ListBooksResponseItem = zod.object({
   status: zod.enum(["draft", "generating", "ready", "ordered"]),
   coverImagePath: zod.string().nullish(),
   shareToken: zod.string().nullish(),
+  pdfPath: zod.string().nullish(),
+  coverPdfPath: zod.string().nullish(),
+  luluPrintJobId: zod.string().nullish(),
+  luluStatus: zod.string().nullish(),
   pageCount: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -59,6 +63,10 @@ export const GetBookResponse = zod.object({
   status: zod.enum(["draft", "generating", "ready", "ordered"]),
   coverImagePath: zod.string().nullish(),
   shareToken: zod.string().nullish(),
+  pdfPath: zod.string().nullish(),
+  coverPdfPath: zod.string().nullish(),
+  luluPrintJobId: zod.string().nullish(),
+  luluStatus: zod.string().nullish(),
   pageCount: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -89,6 +97,10 @@ export const UpdateBookResponse = zod.object({
   status: zod.enum(["draft", "generating", "ready", "ordered"]),
   coverImagePath: zod.string().nullish(),
   shareToken: zod.string().nullish(),
+  pdfPath: zod.string().nullish(),
+  coverPdfPath: zod.string().nullish(),
+  luluPrintJobId: zod.string().nullish(),
+  luluStatus: zod.string().nullish(),
   pageCount: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -204,6 +216,142 @@ export const RegeneratePageResponse = zod.object({
   caption: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Generate interior and cover PDFs for a book
+ */
+export const GenerateBookPdfParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GenerateBookPdfResponse = zod.object({
+  pdfPath: zod.string(),
+  coverPdfPath: zod.string(),
+  interiorUrl: zod.string(),
+  coverUrl: zod.string(),
+  pageCount: zod.number(),
+});
+
+/**
+ * @summary Create a Lulu print order for a book
+ */
+export const CreateLuluOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const createLuluOrderBodyShippingAddressCountryCodeMin = 2;
+export const createLuluOrderBodyShippingAddressCountryCodeMax = 2;
+
+export const CreateLuluOrderBody = zod.object({
+  contactEmail: zod.string().email(),
+  shippingAddress: zod.object({
+    name: zod.string(),
+    street1: zod.string(),
+    street2: zod.string().nullish(),
+    city: zod.string(),
+    state_code: zod.string().nullish(),
+    country_code: zod
+      .string()
+      .min(createLuluOrderBodyShippingAddressCountryCodeMin)
+      .max(createLuluOrderBodyShippingAddressCountryCodeMax),
+    postcode: zod.string(),
+    phone_number: zod.string(),
+    email: zod.string().email(),
+    is_business: zod.boolean().nullish(),
+  }),
+  shippingLevel: zod.enum([
+    "MAIL",
+    "PRIORITY_MAIL",
+    "GROUND",
+    "EXPEDITED",
+    "EXPRESS",
+  ]),
+});
+
+export const CreateLuluOrderResponse = zod.object({
+  printJobId: zod.number(),
+  status: zod.object({
+    name: zod.string().optional(),
+    message: zod.string().nullish(),
+    changed: zod.string().nullish(),
+  }),
+  estimatedShipping: zod
+    .object({
+      arrival_min: zod.string().nullish(),
+      arrival_max: zod.string().nullish(),
+      dispatch_min: zod.string().nullish(),
+      dispatch_max: zod.string().nullish(),
+    })
+    .nullish(),
+  costs: zod.object({}).passthrough().nullish(),
+});
+
+/**
+ * @summary Get the Lulu print order status for a book
+ */
+export const GetLuluOrderStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetLuluOrderStatusResponse = zod.object({
+  printJobId: zod.number(),
+  status: zod.object({
+    name: zod.string().optional(),
+    message: zod.string().nullish(),
+    changed: zod.string().nullish(),
+  }),
+  estimatedShipping: zod.object({}).passthrough().nullish(),
+  lineItems: zod.array(zod.object({}).passthrough()).nullish(),
+});
+
+/**
+ * @summary Calculate Lulu print cost for a shipping address
+ */
+export const CalculateLuluCostParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const calculateLuluCostBodyShippingAddressCountryCodeMin = 2;
+export const calculateLuluCostBodyShippingAddressCountryCodeMax = 2;
+
+export const CalculateLuluCostBody = zod.object({
+  shippingAddress: zod.object({
+    name: zod.string(),
+    street1: zod.string(),
+    street2: zod.string().nullish(),
+    city: zod.string(),
+    state_code: zod.string().nullish(),
+    country_code: zod
+      .string()
+      .min(calculateLuluCostBodyShippingAddressCountryCodeMin)
+      .max(calculateLuluCostBodyShippingAddressCountryCodeMax),
+    postcode: zod.string(),
+    phone_number: zod.string(),
+    email: zod.string().email(),
+    is_business: zod.boolean().nullish(),
+  }),
+  shippingLevel: zod.enum([
+    "MAIL",
+    "PRIORITY_MAIL",
+    "GROUND",
+    "EXPEDITED",
+    "EXPRESS",
+  ]),
+});
+
+export const CalculateLuluCostResponse = zod.object({
+  total_cost_excl_tax: zod.string(),
+  total_cost_incl_tax: zod.string(),
+  total_tax: zod.string().optional(),
+  currency: zod.string(),
+  shipping_cost: zod
+    .object({
+      total_cost_excl_tax: zod.string().optional(),
+      total_cost_incl_tax: zod.string().optional(),
+      total_tax: zod.string().optional(),
+    })
+    .optional(),
 });
 
 /**

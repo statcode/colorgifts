@@ -39,6 +39,14 @@ export interface Book {
   coverImagePath?: string | null;
   /** @nullable */
   shareToken?: string | null;
+  /** @nullable */
+  pdfPath?: string | null;
+  /** @nullable */
+  coverPdfPath?: string | null;
+  /** @nullable */
+  luluPrintJobId?: string | null;
+  /** @nullable */
+  luluStatus?: string | null;
   pageCount: number;
   createdAt: string;
   updatedAt: string;
@@ -152,4 +160,141 @@ export interface RequestUploadUrlBody {
 export interface RequestUploadUrlResponse {
   uploadURL: string;
   objectPath: string;
+}
+
+export interface GeneratePdfResponse {
+  pdfPath: string;
+  coverPdfPath: string;
+  interiorUrl: string;
+  coverUrl: string;
+  pageCount: number;
+}
+
+export interface ShippingAddress {
+  name: string;
+  street1: string;
+  /** @nullable */
+  street2?: string | null;
+  city: string;
+  /** @nullable */
+  state_code?: string | null;
+  /**
+   * @minLength 2
+   * @maxLength 2
+   */
+  country_code: string;
+  postcode: string;
+  phone_number: string;
+  email: string;
+  /** @nullable */
+  is_business?: boolean | null;
+}
+
+export type LuluOrderBodyShippingLevel =
+  (typeof LuluOrderBodyShippingLevel)[keyof typeof LuluOrderBodyShippingLevel];
+
+export const LuluOrderBodyShippingLevel = {
+  MAIL: "MAIL",
+  PRIORITY_MAIL: "PRIORITY_MAIL",
+  GROUND: "GROUND",
+  EXPEDITED: "EXPEDITED",
+  EXPRESS: "EXPRESS",
+} as const;
+
+export interface LuluOrderBody {
+  contactEmail: string;
+  shippingAddress: ShippingAddress;
+  shippingLevel: LuluOrderBodyShippingLevel;
+}
+
+export type LuluOrderResponseStatus = {
+  name?: string;
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  changed?: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type LuluOrderResponseEstimatedShipping = {
+  /** @nullable */
+  arrival_min?: string | null;
+  /** @nullable */
+  arrival_max?: string | null;
+  /** @nullable */
+  dispatch_min?: string | null;
+  /** @nullable */
+  dispatch_max?: string | null;
+} | null;
+
+/**
+ * @nullable
+ */
+export type LuluOrderResponseCosts = { [key: string]: unknown } | null;
+
+export interface LuluOrderResponse {
+  printJobId: number;
+  status: LuluOrderResponseStatus;
+  /** @nullable */
+  estimatedShipping?: LuluOrderResponseEstimatedShipping;
+  /** @nullable */
+  costs?: LuluOrderResponseCosts;
+}
+
+export type LuluStatusResponseStatus = {
+  name?: string;
+  /** @nullable */
+  message?: string | null;
+  /** @nullable */
+  changed?: string | null;
+};
+
+/**
+ * @nullable
+ */
+export type LuluStatusResponseEstimatedShipping = {
+  [key: string]: unknown;
+} | null;
+
+export type LuluStatusResponseLineItemsItem = { [key: string]: unknown };
+
+export interface LuluStatusResponse {
+  printJobId: number;
+  status: LuluStatusResponseStatus;
+  /** @nullable */
+  estimatedShipping?: LuluStatusResponseEstimatedShipping;
+  /** @nullable */
+  lineItems?: LuluStatusResponseLineItemsItem[] | null;
+}
+
+export type LuluCostBodyShippingLevel =
+  (typeof LuluCostBodyShippingLevel)[keyof typeof LuluCostBodyShippingLevel];
+
+export const LuluCostBodyShippingLevel = {
+  MAIL: "MAIL",
+  PRIORITY_MAIL: "PRIORITY_MAIL",
+  GROUND: "GROUND",
+  EXPEDITED: "EXPEDITED",
+  EXPRESS: "EXPRESS",
+} as const;
+
+export interface LuluCostBody {
+  shippingAddress: ShippingAddress;
+  shippingLevel: LuluCostBodyShippingLevel;
+}
+
+export type LuluCostResponseShippingCost = {
+  total_cost_excl_tax?: string;
+  total_cost_incl_tax?: string;
+  total_tax?: string;
+};
+
+export interface LuluCostResponse {
+  total_cost_excl_tax: string;
+  total_cost_incl_tax: string;
+  total_tax?: string;
+  currency: string;
+  shipping_cost?: LuluCostResponseShippingCost;
 }

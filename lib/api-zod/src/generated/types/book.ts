@@ -21,6 +21,14 @@ export interface Book {
   coverImagePath?: string | null;
   /** @nullable */
   shareToken?: string | null;
+  /** @nullable */
+  pdfPath?: string | null;
+  /** @nullable */
+  coverPdfPath?: string | null;
+  /** @nullable */
+  luluPrintJobId?: string | null;
+  /** @nullable */
+  luluStatus?: string | null;
   pageCount: number;
   createdAt: Date;
   updatedAt: Date;

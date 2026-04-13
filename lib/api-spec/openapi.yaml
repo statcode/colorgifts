@@ -256,6 +256,106 @@ paths:
         "404":
           description: Page not found
 
+  /books/{id}/generate-pdf:
+    post:
+      operationId: generateBookPdf
+      tags: [books]
+      summary: Generate interior and cover PDFs for a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDFs generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratePdfResponse"
+        "400":
+          description: Invalid request
+        "404":
+          description: Book not found
+
+  /books/{id}/lulu-order:
+    post:
+      operationId: createLuluOrder
+      tags: [books]
+      summary: Create a Lulu print order for a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LuluOrderBody"
+      responses:
+        "200":
+          description: Print order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LuluOrderResponse"
+        "400":
+          description: Invalid request
+        "404":
+          description: Book not found
+
+  /books/{id}/lulu-status:
+    get:
+      operationId: getLuluOrderStatus
+      tags: [books]
+      summary: Get the Lulu print order status for a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LuluStatusResponse"
+        "404":
+          description: Book not found or no order placed
+
+  /books/{id}/lulu-cost:
+    post:
+      operationId: calculateLuluCost
+      tags: [books]
+      summary: Calculate Lulu print cost for a shipping address
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LuluCostBody"
+      responses:
+        "200":
+          description: Cost calculation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LuluCostResponse"
+        "400":
+          description: Invalid request
+
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -362,6 +462,14 @@ components:
         coverImagePath:
           type: ["string", "null"]
         shareToken:
+          type: ["string", "null"]
+        pdfPath:
+          type: ["string", "null"]
+        coverPdfPath:
+          type: ["string", "null"]
+        luluPrintJobId:
+          type: ["string", "null"]
+        luluStatus:
           type: ["string", "null"]
         pageCount:
           type: integer
@@ -528,3 +636,166 @@ components:
       required:
         - uploadURL
         - objectPath
+
+    GeneratePdfResponse:
+      type: object
+      properties:
+        pdfPath:
+          type: string
+        coverPdfPath:
+          type: string
+        interiorUrl:
+          type: string
+        coverUrl:
+          type: string
+        pageCount:
+          type: integer
+      required:
+        - pdfPath
+        - coverPdfPath
+        - interiorUrl
+        - coverUrl
+        - pageCount
+
+    ShippingAddress:
+      type: object
+      properties:
+        name:
+          type: string
+        street1:
+          type: string
+        street2:
+          type: ["string", "null"]
+        city:
+          type: string
+        state_code:
+          type: ["string", "null"]
+        country_code:
+          type: string
+          minLength: 2
+          maxLength: 2
+        postcode:
+          type: string
+        phone_number:
+          type: string
+        email:
+          type: string
+          format: email
+        is_business:
+          type: ["boolean", "null"]
+      required:
+        - name
+        - street1
+        - city
+        - country_code
+        - postcode
+        - phone_number
+        - email
+
+    LuluOrderBody:
+      type: object
+      properties:
+        contactEmail:
+          type: string
+          format: email
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
+        shippingLevel:
+          type: string
+          enum: [MAIL, PRIORITY_MAIL, GROUND, EXPEDITED, EXPRESS]
+      required:
+        - contactEmail
+        - shippingAddress
+        - shippingLevel
+
+    LuluOrderResponse:
+      type: object
+      properties:
+        printJobId:
+          type: integer
+        status:
+          type: object
+          properties:
+            name:
+              type: string
+            message:
+              type: ["string", "null"]
+            changed:
+              type: ["string", "null"]
+        estimatedShipping:
+          type: ["object", "null"]
+          properties:
+            arrival_min:
+              type: ["string", "null"]
+            arrival_max:
+              type: ["string", "null"]
+            dispatch_min:
+              type: ["string", "null"]
+            dispatch_max:
+              type: ["string", "null"]
+        costs:
+          type: ["object", "null"]
+      required:
+        - printJobId
+        - status
+
+    LuluStatusResponse:
+      type: object
+      properties:
+        printJobId:
+          type: integer
+        status:
+          type: object
+          properties:
+            name:
+              type: string
+            message:
+              type: ["string", "null"]
+            changed:
+              type: ["string", "null"]
+        estimatedShipping:
+          type: ["object", "null"]
+        lineItems:
+          type: ["array", "null"]
+          items:
+            type: object
+      required:
+        - printJobId
+        - status
+
+    LuluCostBody:
+      type: object
+      properties:
+        shippingAddress:
+          $ref: "#/components/schemas/ShippingAddress"
+        shippingLevel:
+          type: string
+          enum: [MAIL, PRIORITY_MAIL, GROUND, EXPEDITED, EXPRESS]
+      required:
+        - shippingAddress
+        - shippingLevel
+
+    LuluCostResponse:
+      type: object
+      properties:
+        total_cost_excl_tax:
+          type: string
+        total_cost_incl_tax:
+          type: string
+        total_tax:
+          type: string
+        currency:
+          type: string
+        shipping_cost:
+          type: object
+          properties:
+            total_cost_excl_tax:
+              type: string
+            total_cost_incl_tax:
+              type: string
+            total_tax:
+              type: string
+      required:
+        - total_cost_excl_tax
+        - total_cost_incl_tax
+        - currency
