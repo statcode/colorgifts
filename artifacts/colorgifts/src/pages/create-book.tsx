@@ -9,16 +9,20 @@ import {
   useCreateBook, 
   useRequestUploadUrl, 
   useCreatePhoto, 
-  useGenerateBookPages 
+  useGenerateBookPages,
+  useGetBook,
+  useUpdateBook,
+  getGetBookQueryKey,
 } from "@workspace/api-client-react";
-import { BookStyle, CreateBookBodyStyle } from "@workspace/api-client-react";
+import { BookStyle, CreateBookBodyStyle, BookStatus } from "@workspace/api-client-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, UploadCloud, X, Wand2, ImageIcon, Sparkles } from "lucide-react";
+import { Loader2, UploadCloud, X, Wand2, ImageIcon, Sparkles, FileDown, Book as BookIcon, Check, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 import simpleStyleImg from "@/assets/style-simple.png";
@@ -49,11 +53,33 @@ export default function CreateBook() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authView, setAuthView] = useState<"sign-up" | "sign-in">("sign-up");
   const pendingDataRef = useRef<Step1Values | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<"digital" | "print" | null>(null);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const createBook = useCreateBook();
   const requestUploadUrl = useRequestUploadUrl();
   const createPhoto = useCreatePhoto();
   const generatePages = useGenerateBookPages();
+  const updateBook = useUpdateBook();
+  const queryClient = useQueryClient();
+
+  // Poll book status during step 3 (generating) until ready, then advance to step 4
+  const { data: bookData } = useGetBook(bookId ?? 0, {
+    query: {
+      enabled: step === 3 && !!bookId,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        return status === BookStatus.ready || status === BookStatus.ordered ? false : 3000;
+      },
+      queryKey: getGetBookQueryKey(bookId ?? 0),
+    },
+  });
+
+  useEffect(() => {
+    if (step === 3 && bookData?.status === BookStatus.ready) {
+      setStep(4);
+    }
+  }, [bookData?.status, step]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -165,16 +191,10 @@ export default function CreateBook() {
         setUploadProgress(Math.round(((i + 1) / files.length) * 100));
       }
       
-      // All uploaded, now generate
+      // All uploaded — trigger generation and move to step 3 to poll for completion
       setStep(3);
       await generatePages.mutateAsync({ id: bookId });
-      
-      // Redirect to book detail
-      toast({
-        title: "Magic is happening!",
-        description: "Your coloring book is being generated.",
-      });
-      setLocation(`/books/${bookId}`);
+      // Step 3 will poll bookData.status and auto-advance to step 4 when ready
       
     } catch (error) {
       toast({
@@ -183,6 +203,23 @@ export default function CreateBook() {
         variant: "destructive"
       });
       setIsUploading(false);
+    }
+  };
+
+  const handleOrder = async () => {
+    if (!selectedFormat || !bookId) return;
+    setIsProcessingOrder(true);
+    try {
+      await new Promise(r => setTimeout(r, 1500));
+      await updateBook.mutateAsync({ id: bookId, data: { status: BookStatus.ordered } });
+      queryClient.setQueryData(getGetBookQueryKey(bookId), (old: any) =>
+        old ? { ...old, status: BookStatus.ordered } : old
+      );
+      toast({ title: "Order confirmed!", description: "Your gift is on its way." });
+      setLocation(`/books/${bookId}/share`);
+    } catch {
+      toast({ title: "Checkout failed", variant: "destructive" });
+      setIsProcessingOrder(false);
     }
   };
 
@@ -195,14 +232,15 @@ export default function CreateBook() {
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-muted -z-10 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-primary transition-all duration-500 ease-in-out"
-                style={{ width: `${((step - 1) / 2) * 100}%` }}
+                style={{ width: `${((step - 1) / 3) * 100}%` }}
               />
             </div>
             
             {[
               { num: 1, label: "Book Details" },
               { num: 2, label: "Add Photos" },
-              { num: 3, label: "Generate" }
+              { num: 3, label: "Generate Pages" },
+              { num: 4, label: "Order Book" },
             ].map((s) => (
               <div key={s.num} className="flex flex-col items-center gap-2 bg-background px-2">
                 <div className={cn(
@@ -413,7 +451,7 @@ export default function CreateBook() {
           </div>
         )}
 
-        {/* Step 3: Generate State */}
+        {/* Step 3: Generate Pages */}
         {step === 3 && (
           <div className="animate-in fade-in zoom-in-95 duration-1000 text-center py-20">
             <div className="relative w-32 h-32 mx-auto mb-8">
@@ -425,8 +463,140 @@ export default function CreateBook() {
             </div>
             <h1 className="text-4xl font-serif font-bold mb-4">Sprinkling Magic Dust...</h1>
             <p className="text-xl text-muted-foreground max-w-lg mx-auto">
-              Our AI illustrators are carefully tracing your photos. This usually takes a minute or two. We'll take you to your book automatically!
+              Our AI illustrators are carefully tracing your photos. This usually takes a minute or two. We'll move you forward automatically!
             </p>
+          </div>
+        )}
+
+        {/* Step 4: Order Book */}
+        {step === 4 && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <h1 className="text-4xl font-serif font-bold mb-2">Your book is ready!</h1>
+              <p className="text-lg text-muted-foreground">Choose how you'd like to receive it.</p>
+            </div>
+
+            <div className="grid lg:grid-cols-5 gap-10">
+              {/* Book Summary */}
+              <div className="lg:col-span-2">
+                <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
+                  <div className="aspect-[4/3] bg-muted rounded-xl mb-6 overflow-hidden border border-border/50 flex flex-col items-center justify-center p-6 text-center bg-white">
+                    <BookIcon className="w-12 h-12 text-primary/40 mb-3" />
+                    <span className="font-serif text-xl font-bold mb-1">{bookData?.title ?? "Your Book"}</span>
+                    <span className="text-sm text-muted-foreground capitalize">{bookData?.style} Style • {bookData?.pageCount ?? "—"} pages</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t border-border">
+                    <ShieldCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                    100% Satisfaction Guarantee
+                  </div>
+                </div>
+              </div>
+
+              {/* Format + Checkout */}
+              <div className="lg:col-span-3 space-y-4">
+                {/* Digital Option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedFormat("digital")}
+                  className={cn(
+                    "w-full text-left flex items-start p-6 rounded-2xl border-2 cursor-pointer transition-all",
+                    selectedFormat === "digital"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-border hover:border-primary/50 hover:bg-muted/30 bg-card"
+                  )}
+                >
+                  <div className="flex items-center h-6 mr-4">
+                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", selectedFormat === "digital" ? "border-primary bg-primary" : "border-input")}>
+                      {selectedFormat === "digital" && <Check className="w-3 h-3 text-primary-foreground" />}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-bold text-lg flex items-center gap-2">
+                        <FileDown className="w-5 h-5 text-muted-foreground" /> Digital PDF
+                      </h3>
+                      <span className="font-bold text-lg">$9.99</span>
+                    </div>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      Instant download. High-res PDF, print at home as many times as you like. Perfect for gifting right away.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Print Option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedFormat("print")}
+                  className={cn(
+                    "w-full text-left flex items-start p-6 rounded-2xl border-2 cursor-pointer transition-all relative overflow-hidden",
+                    selectedFormat === "print"
+                      ? "border-accent bg-accent/5 shadow-md"
+                      : "border-border hover:border-accent/50 hover:bg-muted/30 bg-card"
+                  )}
+                >
+                  {selectedFormat === "print" && (
+                    <div className="absolute top-0 right-0 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
+                  )}
+                  <div className="flex items-center h-6 mr-4">
+                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", selectedFormat === "print" ? "border-accent bg-accent" : "border-input")}>
+                      {selectedFormat === "print" && <Check className="w-3 h-3 text-accent-foreground" />}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-bold text-lg flex items-center gap-2">
+                        <BookIcon className="w-5 h-5 text-muted-foreground" /> Premium Printed Book
+                      </h3>
+                      <span className="font-bold text-lg">$19.99</span>
+                    </div>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      Beautifully bound softcover on thick paper. Ships free worldwide in 3-5 days. Includes digital PDF.
+                    </p>
+                    {selectedFormat === "print" && (
+                      <p className="text-xs font-medium text-primary mt-3">
+                        Estimated delivery: {new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </button>
+
+                {/* Order Summary + Button */}
+                <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+                  <div className="flex justify-between mb-2 text-muted-foreground text-sm">
+                    <span>Subtotal</span>
+                    <span>{selectedFormat === "print" ? "$19.99" : selectedFormat === "digital" ? "$9.99" : "$0.00"}</span>
+                  </div>
+                  <div className="flex justify-between mb-4 text-muted-foreground text-sm">
+                    <span>Shipping</span>
+                    <span>{selectedFormat === "print" ? "Free" : "—"}</span>
+                  </div>
+                  <div className="flex justify-between pt-4 border-t border-border font-bold text-xl mb-6">
+                    <span>Total</span>
+                    <span>{selectedFormat === "print" ? "$19.99" : selectedFormat === "digital" ? "$9.99" : "$0.00"}</span>
+                  </div>
+
+                  <Button
+                    className="w-full h-14 rounded-full text-lg shadow-lg"
+                    size="lg"
+                    disabled={!selectedFormat || isProcessingOrder}
+                    onClick={handleOrder}
+                    style={{
+                      backgroundColor: selectedFormat === "print" ? "hsl(var(--accent))" : "hsl(var(--primary))",
+                      color: selectedFormat === "print" ? "hsl(var(--accent-foreground))" : "hsl(var(--primary-foreground))",
+                    }}
+                  >
+                    {isProcessingOrder ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      `Pay ${selectedFormat === "print" ? "$19.99" : selectedFormat === "digital" ? "$9.99" : ""}`
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
