@@ -471,6 +471,11 @@ components:
           type: ["string", "null"]
         luluStatus:
           type: ["string", "null"]
+        coverTemplate:
+          type: string
+          enum: [classic, sunshine, ocean, garden, starlight, rainbow]
+        coverTagline:
+          type: ["string", "null"]
         pageCount:
           type: integer
         createdAt:
@@ -520,6 +525,11 @@ components:
           type: string
           enum: [draft, generating, ready, ordered]
         coverImagePath:
+          type: ["string", "null"]
+        coverTemplate:
+          type: string
+          enum: [classic, sunshine, ocean, garden, starlight, rainbow]
+        coverTagline:
           type: ["string", "null"]
 
     ColoringPage:

@@ -26,6 +26,18 @@ export const BookStatus = {
   ordered: "ordered",
 } as const;
 
+export type BookCoverTemplate =
+  (typeof BookCoverTemplate)[keyof typeof BookCoverTemplate];
+
+export const BookCoverTemplate = {
+  classic: "classic",
+  sunshine: "sunshine",
+  ocean: "ocean",
+  garden: "garden",
+  starlight: "starlight",
+  rainbow: "rainbow",
+} as const;
+
 export interface Book {
   id: number;
   title: string;
@@ -47,6 +59,9 @@ export interface Book {
   luluPrintJobId?: string | null;
   /** @nullable */
   luluStatus?: string | null;
+  coverTemplate?: BookCoverTemplate;
+  /** @nullable */
+  coverTagline?: string | null;
   pageCount: number;
   createdAt: string;
   updatedAt: string;
@@ -89,6 +104,18 @@ export const UpdateBookBodyStatus = {
   ordered: "ordered",
 } as const;
 
+export type UpdateBookBodyCoverTemplate =
+  (typeof UpdateBookBodyCoverTemplate)[keyof typeof UpdateBookBodyCoverTemplate];
+
+export const UpdateBookBodyCoverTemplate = {
+  classic: "classic",
+  sunshine: "sunshine",
+  ocean: "ocean",
+  garden: "garden",
+  starlight: "starlight",
+  rainbow: "rainbow",
+} as const;
+
 export interface UpdateBookBody {
   title?: string;
   /** @nullable */
@@ -99,6 +126,9 @@ export interface UpdateBookBody {
   status?: UpdateBookBodyStatus;
   /** @nullable */
   coverImagePath?: string | null;
+  coverTemplate?: UpdateBookBodyCoverTemplate;
+  /** @nullable */
+  coverTagline?: string | null;
 }
 
 export type ColoringPageStatus =

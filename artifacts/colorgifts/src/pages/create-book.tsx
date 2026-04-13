@@ -52,6 +52,160 @@ import simpleStyleImg from "@/assets/style-simple.png";
 import cartoonStyleImg from "@/assets/style-cartoon.png";
 import detailedStyleImg from "@/assets/style-detailed.png";
 
+export type CoverTemplateId = "classic" | "sunshine" | "ocean" | "garden" | "starlight" | "rainbow";
+
+interface CoverTemplateConfig {
+  id: CoverTemplateId;
+  name: string;
+  description: string;
+  bg: string;
+  border: string;
+  titleColor: string;
+  subtitleColor: string;
+  taglineColor: string;
+  accentColor: string;
+}
+
+const COVER_TEMPLATES: CoverTemplateConfig[] = [
+  {
+    id: "classic",
+    name: "Classic",
+    description: "Timeless & elegant",
+    bg: "#F9F9F6",
+    border: "#4A4A4A",
+    titleColor: "#141414",
+    subtitleColor: "#555",
+    taglineColor: "#888",
+    accentColor: "#333",
+  },
+  {
+    id: "sunshine",
+    name: "Sunshine",
+    description: "Warm & cheerful",
+    bg: "#FFF8D0",
+    border: "#D4890A",
+    titleColor: "#6B3200",
+    subtitleColor: "#8A5008",
+    taglineColor: "#A06010",
+    accentColor: "#C07010",
+  },
+  {
+    id: "ocean",
+    name: "Ocean",
+    description: "Cool & serene",
+    bg: "#E0F4FF",
+    border: "#2080CC",
+    titleColor: "#053A80",
+    subtitleColor: "#0D5AA0",
+    taglineColor: "#1A70B8",
+    accentColor: "#0D5AA0",
+  },
+  {
+    id: "garden",
+    name: "Garden",
+    description: "Fresh & natural",
+    bg: "#E8FBE8",
+    border: "#3C9A3C",
+    titleColor: "#0F4D0F",
+    subtitleColor: "#1E6B1E",
+    taglineColor: "#2A7A2A",
+    accentColor: "#258025",
+  },
+  {
+    id: "starlight",
+    name: "Starlight",
+    description: "Bold & magical",
+    bg: "#13103D",
+    border: "#9A8FE8",
+    titleColor: "#FFFFFF",
+    subtitleColor: "#D8D4FF",
+    taglineColor: "#B8B2F0",
+    accentColor: "#B0A8FF",
+  },
+  {
+    id: "rainbow",
+    name: "Rainbow",
+    description: "Vibrant & fun",
+    bg: "#FFFFFF",
+    border: "#DD3333",
+    titleColor: "#8B18B0",
+    subtitleColor: "#3030BB",
+    taglineColor: "#198050",
+    accentColor: "#E07800",
+  },
+];
+
+function CoverPreview({
+  template,
+  title,
+  subtitle,
+  tagline,
+  small = false,
+}: {
+  template: CoverTemplateConfig;
+  title: string;
+  subtitle?: string;
+  tagline?: string;
+  small?: boolean;
+}) {
+  const starDots = template.id === "starlight"
+    ? [{ x: 20, y: 15 }, { x: 75, y: 10 }, { x: 60, y: 35 }, { x: 10, y: 50 }, { x: 85, y: 55 }]
+    : [];
+  const rainbowStripes = template.id === "rainbow"
+    ? ["#EF4444", "#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6"]
+    : [];
+
+  return (
+    <div
+      className="relative rounded-lg overflow-hidden flex flex-col"
+      style={{
+        background: template.bg,
+        border: `2px solid ${template.border}`,
+        width: small ? 80 : "100%",
+        height: small ? 104 : "100%",
+        minHeight: small ? 104 : 160,
+      }}
+    >
+      {starDots.map((s, i) => (
+        <div key={i} className="absolute rounded-full" style={{ left: `${s.x}%`, top: `${s.y}%`, width: 3, height: 3, background: template.border }} />
+      ))}
+      {rainbowStripes.length > 0 && (
+        <div className="absolute top-0 left-0 right-0 flex" style={{ height: small ? 8 : 12 }}>
+          {rainbowStripes.map((c, i) => (
+            <div key={i} className="flex-1" style={{ background: c }} />
+          ))}
+        </div>
+      )}
+      <div
+        className="absolute inset-1.5 rounded flex flex-col items-center justify-center text-center px-2"
+        style={{ border: `1px solid ${template.border}40` }}
+      >
+        <div
+          className="font-bold leading-tight"
+          style={{
+            color: template.titleColor,
+            fontSize: small ? 8 : 15,
+            fontFamily: "Georgia, serif",
+          }}
+        >
+          {title || "Book Title"}
+        </div>
+        {subtitle && !small && (
+          <div style={{ color: template.subtitleColor, fontSize: 10, marginTop: 3, fontStyle: "italic" }}>
+            {subtitle}
+          </div>
+        )}
+        <div style={{ color: template.taglineColor, fontSize: small ? 5 : 8, marginTop: small ? 3 : 8 }}>
+          {tagline || "A Personalized Coloring Book"}
+        </div>
+        <div style={{ color: template.accentColor, fontSize: small ? 5 : 8, marginTop: small ? 2 : 6, fontWeight: "bold" }}>
+          ColorGifts
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function getPriceForPages(pageCount: number): string {
   if (pageCount <= 20) return "$24.95";
   if (pageCount <= 30) return "$29.95";
@@ -166,6 +320,12 @@ export default function CreateBook() {
   const [editorPages, setEditorPages] = useState<(ColoringPage & { caption: string })[]>([]);
   const [generationComplete, setGenerationComplete] = useState(false);
 
+  // Cover design state
+  const [coverTemplate, setCoverTemplate] = useState<CoverTemplateId>("classic");
+  const [coverTitle, setCoverTitle] = useState("");
+  const [coverSubtitle, setCoverSubtitle] = useState("");
+  const [coverTagline, setCoverTagline] = useState("");
+
   const createBook = useCreateBook();
   const requestUploadUrl = useRequestUploadUrl();
   const createPhoto = useCreatePhoto();
@@ -210,6 +370,11 @@ export default function CreateBook() {
     if (step === 3 && bookData?.status === BookStatus.ready && pagesData) {
       const sorted = [...pagesData].sort((a, b) => a.sortOrder - b.sortOrder);
       setEditorPages(sorted.map(p => ({ ...p, caption: p.caption ?? "" })));
+      // Pre-fill cover fields from book data (only on first load)
+      if (bookData.title && !coverTitle) setCoverTitle(bookData.title);
+      if (bookData.subtitle && !coverSubtitle) setCoverSubtitle(bookData.subtitle ?? "");
+      if (bookData.coverTagline && !coverTagline) setCoverTagline(bookData.coverTagline ?? "");
+      if (bookData.coverTemplate) setCoverTemplate(bookData.coverTemplate as CoverTemplateId);
       setGenerationComplete(true);
     }
   }, [bookData?.status, pagesData, step]);
@@ -356,10 +521,21 @@ export default function CreateBook() {
 
   const handleFinalizeBook = async () => {
     if (!bookId) return;
-    // Save all sort orders and captions
-    await Promise.all(editorPages.map((page, idx) =>
-      updatePage.mutateAsync({ id: page.id, data: { sortOrder: idx, caption: page.caption || null } })
-    ));
+    // Save sort orders, captions, and cover design settings in parallel
+    await Promise.all([
+      ...editorPages.map((page, idx) =>
+        updatePage.mutateAsync({ id: page.id, data: { sortOrder: idx, caption: page.caption || null } })
+      ),
+      updateBook.mutateAsync({
+        id: bookId,
+        data: {
+          title: coverTitle || undefined,
+          subtitle: coverSubtitle || null,
+          coverTemplate: coverTemplate as any,
+          coverTagline: coverTagline || null,
+        }
+      }),
+    ]);
     setStep(4);
   };
 
@@ -748,48 +924,146 @@ export default function CreateBook() {
           );
         })()}
 
-        {/* Step 3: Generate Pages — Page Editor phase */}
-        {step === 3 && generationComplete && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-3">
-                <Sparkles className="w-7 h-7 text-primary" />
-              </div>
-              <h1 className="text-3xl font-serif font-bold mb-2">Arrange your pages</h1>
-              <p className="text-muted-foreground">Drag to reorder pages, and add an optional caption to each one.</p>
-            </div>
-
-            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={editorPages.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-3 mb-8">
-                  {editorPages.map((page, idx) => (
-                    <SortablePageRow
-                      key={page.id}
-                      page={page}
-                      index={idx}
-                      onCaptionChange={handleCaptionChange}
-                    />
-                  ))}
+        {/* Step 3: Generate Pages — Page Editor + Cover Designer phase */}
+        {step === 3 && generationComplete && (() => {
+          const selectedTpl = COVER_TEMPLATES.find(t => t.id === coverTemplate) ?? COVER_TEMPLATES[0];
+          return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-10">
+              {/* ── Cover Designer ── */}
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <BookIcon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-serif font-bold">Design Your Cover</h2>
+                    <p className="text-sm text-muted-foreground">Choose a template and personalise the text.</p>
+                  </div>
                 </div>
-              </SortableContext>
-            </DndContext>
 
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" size="lg" className="rounded-full h-14 px-8 text-lg" onClick={() => { setGenerationComplete(false); setStep(2); }}>
-                Back
-              </Button>
-              <Button
-                size="lg"
-                className="rounded-full h-14 px-10 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                onClick={handleFinalizeBook}
-                disabled={updatePage.isPending}
-              >
-                {updatePage.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-                Next: Order Book
-              </Button>
+                <div className="grid lg:grid-cols-3 gap-6">
+                  {/* Left: template picker */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Choose a Template</h3>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                      {COVER_TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.id}
+                          onClick={() => setCoverTemplate(tpl.id)}
+                          className={cn(
+                            "flex flex-col items-center gap-2 rounded-2xl p-2 border-2 transition-all duration-200",
+                            coverTemplate === tpl.id
+                              ? "border-primary shadow-md scale-105"
+                              : "border-transparent hover:border-border"
+                          )}
+                        >
+                          <div style={{ width: 80, height: 104 }}>
+                            <CoverPreview template={tpl} title={coverTitle || "Title"} subtitle={coverSubtitle} tagline={coverTagline} small />
+                          </div>
+                          <span className="text-xs font-medium">{tpl.name}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Text fields */}
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <label className="text-sm font-semibold text-foreground block mb-1.5">Cover Title</label>
+                        <Input
+                          value={coverTitle}
+                          onChange={e => setCoverTitle(e.target.value)}
+                          placeholder="e.g. Adventures of Tommy & Rex"
+                          className="h-11 bg-muted/50 border-transparent focus-visible:bg-background rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-foreground block mb-1.5">Subtitle <span className="text-muted-foreground font-normal">(optional)</span></label>
+                        <Input
+                          value={coverSubtitle}
+                          onChange={e => setCoverSubtitle(e.target.value)}
+                          placeholder="e.g. Summer 2024"
+                          className="h-11 bg-muted/50 border-transparent focus-visible:bg-background rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-foreground block mb-1.5">Tagline <span className="text-muted-foreground font-normal">(optional)</span></label>
+                        <Input
+                          value={coverTagline}
+                          onChange={e => setCoverTagline(e.target.value)}
+                          placeholder="e.g. Made with Love · A Family Coloring Book"
+                          className="h-11 bg-muted/50 border-transparent focus-visible:bg-background rounded-xl"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Shown below the title on the cover. Defaults to "A Personalized Coloring Book".</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: live preview */}
+                  <div className="flex flex-col items-center gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground self-start">Live Preview</h3>
+                    <div className="w-full max-w-[220px] aspect-[3/4] rounded-2xl overflow-hidden shadow-xl border border-border/50">
+                      <CoverPreview
+                        template={selectedTpl}
+                        title={coverTitle || "Book Title"}
+                        subtitle={coverSubtitle}
+                        tagline={coverTagline}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      {selectedTpl.name} — {selectedTpl.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border" />
+
+              {/* ── Page Arranger ── */}
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-serif font-bold">Arrange Your Pages</h2>
+                    <p className="text-sm text-muted-foreground">Drag to reorder, and add an optional caption beneath each illustration.</p>
+                  </div>
+                </div>
+
+                <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={editorPages.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3 mb-8">
+                      {editorPages.map((page, idx) => (
+                        <SortablePageRow
+                          key={page.id}
+                          page={page}
+                          index={idx}
+                          onCaptionChange={handleCaptionChange}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              </div>
+
+              <div className="flex justify-between pt-2 pb-6">
+                <Button variant="outline" size="lg" className="rounded-full h-14 px-8 text-lg" onClick={() => { setGenerationComplete(false); setStep(2); }}>
+                  Back
+                </Button>
+                <Button
+                  size="lg"
+                  className="rounded-full h-14 px-10 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                  onClick={handleFinalizeBook}
+                  disabled={updatePage.isPending || updateBook.isPending}
+                >
+                  {(updatePage.isPending || updateBook.isPending) ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                  Next: Order Book
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Step 4: Order Book */}
         {step === 4 && (() => {

@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, degrees, type RGB } from "pdf-lib";
 import { ObjectStorageService } from "./objectStorage";
 import { logger } from "./logger";
 import type { ColoringPage } from "@workspace/db";
@@ -8,6 +8,75 @@ const PAGE_WIDTH_PT = 612;
 const PAGE_HEIGHT_PT = 792;
 
 const storage = new ObjectStorageService();
+
+export type CoverTemplate = "classic" | "sunshine" | "ocean" | "garden" | "starlight" | "rainbow";
+
+interface TemplateConfig {
+  bgColor: RGB;
+  titleColor: RGB;
+  subtitleColor: RGB;
+  taglineColor: RGB;
+  borderColor: RGB;
+  accentColor: RGB;
+  darkText: boolean;
+}
+
+const TEMPLATES: Record<CoverTemplate, TemplateConfig> = {
+  classic: {
+    bgColor: rgb(0.97, 0.97, 0.95),
+    titleColor: rgb(0.08, 0.08, 0.08),
+    subtitleColor: rgb(0.35, 0.35, 0.35),
+    taglineColor: rgb(0.5, 0.5, 0.5),
+    borderColor: rgb(0.3, 0.3, 0.3),
+    accentColor: rgb(0.2, 0.2, 0.2),
+    darkText: true,
+  },
+  sunshine: {
+    bgColor: rgb(1.0, 0.97, 0.82),
+    titleColor: rgb(0.45, 0.22, 0.0),
+    subtitleColor: rgb(0.6, 0.35, 0.05),
+    taglineColor: rgb(0.65, 0.4, 0.1),
+    borderColor: rgb(0.9, 0.65, 0.1),
+    accentColor: rgb(0.85, 0.55, 0.05),
+    darkText: true,
+  },
+  ocean: {
+    bgColor: rgb(0.88, 0.96, 1.0),
+    titleColor: rgb(0.02, 0.25, 0.55),
+    subtitleColor: rgb(0.05, 0.38, 0.65),
+    taglineColor: rgb(0.1, 0.45, 0.7),
+    borderColor: rgb(0.15, 0.5, 0.8),
+    accentColor: rgb(0.05, 0.38, 0.65),
+    darkText: true,
+  },
+  garden: {
+    bgColor: rgb(0.9, 0.98, 0.9),
+    titleColor: rgb(0.06, 0.3, 0.06),
+    subtitleColor: rgb(0.12, 0.42, 0.12),
+    taglineColor: rgb(0.18, 0.5, 0.18),
+    borderColor: rgb(0.25, 0.6, 0.25),
+    accentColor: rgb(0.15, 0.48, 0.15),
+    darkText: true,
+  },
+  starlight: {
+    bgColor: rgb(0.08, 0.07, 0.25),
+    titleColor: rgb(1.0, 1.0, 1.0),
+    subtitleColor: rgb(0.85, 0.85, 1.0),
+    taglineColor: rgb(0.75, 0.75, 0.95),
+    borderColor: rgb(0.6, 0.55, 0.95),
+    accentColor: rgb(0.7, 0.65, 1.0),
+    darkText: false,
+  },
+  rainbow: {
+    bgColor: rgb(1.0, 1.0, 1.0),
+    titleColor: rgb(0.55, 0.1, 0.7),
+    subtitleColor: rgb(0.2, 0.2, 0.75),
+    taglineColor: rgb(0.1, 0.5, 0.35),
+    borderColor: rgb(0.85, 0.25, 0.25),
+    accentColor: rgb(0.9, 0.5, 0.0),
+    darkText: true,
+  },
+};
 
 async function fetchImageBytes(objectPath: string): Promise<{ bytes: Uint8Array; isPng: boolean }> {
   const cleanPath = objectPath.startsWith("/objects/") ? objectPath : `/objects/${objectPath}`;
@@ -71,12 +140,7 @@ export async function generateInteriorPdf(
       const x = (PAGE_WIDTH_PT - imgDims.width) / 2;
       const y = captionHeight + (imageAreaHeight - imgDims.height) / 2 + 18;
 
-      pdfPage.drawImage(image, {
-        x,
-        y,
-        width: imgDims.width,
-        height: imgDims.height,
-      });
+      pdfPage.drawImage(image, { x, y, width: imgDims.width, height: imgDims.height });
 
       if (hasCaption) {
         const captionFontSize = 13;
@@ -110,159 +174,182 @@ export async function generateInteriorPdf(
   return Buffer.from(pdfBytes);
 }
 
+function drawTemplateCoverContent(
+  coverPage: ReturnType<PDFDocument["addPage"]>,
+  template: TemplateConfig,
+  bookTitle: string,
+  subtitle: string | null | undefined,
+  tagline: string | null | undefined,
+  pageCount: number,
+  fonts: {
+    helveticaBold: Awaited<ReturnType<PDFDocument["embedFont"]>>;
+    helvetica: Awaited<ReturnType<PDFDocument["embedFont"]>>;
+    timesRomanBold: Awaited<ReturnType<PDFDocument["embedFont"]>>;
+    timesRoman: Awaited<ReturnType<PDFDocument["embedFont"]>>;
+  },
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const { helveticaBold, helvetica, timesRomanBold, timesRoman } = fonts;
+
+  coverPage.drawRectangle({ x, y, width: w, height: h, color: template.bgColor });
+
+  const inset = 14;
+  coverPage.drawRectangle({
+    x: x + inset,
+    y: y + inset,
+    width: w - inset * 2,
+    height: h - inset * 2,
+    borderColor: template.borderColor,
+    borderWidth: 2,
+    color: template.bgColor,
+  });
+
+  const titleFontSize = Math.min(34, Math.max(18, 300 / Math.max(bookTitle.length, 1)));
+  const titleLines = wrapText(bookTitle, Math.floor(w / (titleFontSize * 0.58)));
+
+  titleLines.forEach((line, i) => {
+    const lw = timesRomanBold.widthOfTextAtSize(line, titleFontSize);
+    coverPage.drawText(line, {
+      x: x + (w - lw) / 2,
+      y: y + h * 0.55 - i * (titleFontSize + 8),
+      font: timesRomanBold,
+      size: titleFontSize,
+      color: template.titleColor,
+    });
+  });
+
+  let nextY = y + h * 0.55 - titleLines.length * (titleFontSize + 8) - 20;
+
+  if (subtitle) {
+    const subSize = 14;
+    const subLines = wrapText(subtitle, Math.floor(w / (subSize * 0.6)));
+    subLines.forEach((line, i) => {
+      const lw = timesRoman.widthOfTextAtSize(line, subSize);
+      coverPage.drawText(line, {
+        x: x + (w - lw) / 2,
+        y: nextY - i * (subSize + 5),
+        font: timesRoman,
+        size: subSize,
+        color: template.subtitleColor,
+      });
+    });
+    nextY -= subLines.length * (subSize + 5) + 14;
+  }
+
+  const displayTagline = tagline?.trim() || "A Personalized Coloring Book";
+  const taglineSize = 11;
+  const taglineLines = wrapText(displayTagline, Math.floor(w / (taglineSize * 0.6)));
+  taglineLines.forEach((line, i) => {
+    const lw = timesRoman.widthOfTextAtSize(line, taglineSize);
+    coverPage.drawText(line, {
+      x: x + (w - lw) / 2,
+      y: y + 72 + i * (taglineSize + 4),
+      font: timesRoman,
+      size: taglineSize,
+      color: template.taglineColor,
+    });
+  });
+
+  const brandText = "ColorGifts";
+  const brandSize = 13;
+  const brandWidth = helveticaBold.widthOfTextAtSize(brandText, brandSize);
+  coverPage.drawText(brandText, {
+    x: x + (w - brandWidth) / 2,
+    y: y + 36,
+    font: helveticaBold,
+    size: brandSize,
+    color: template.accentColor,
+  });
+}
+
 export async function generateCoverPdf(
   bookTitle: string,
   subtitle: string | null | undefined,
   pageCount: number,
-  coverDimensions: CoverDimensions
+  coverDimensions: CoverDimensions,
+  templateId: CoverTemplate = "classic",
+  tagline?: string | null
 ): Promise<Buffer> {
+  const template = TEMPLATES[templateId] ?? TEMPLATES.classic;
   const pdfDoc = await PDFDocument.create();
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
   const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+  const fonts = { helveticaBold, helvetica, timesRomanBold, timesRoman };
 
   const coverWidth = coverDimensions.width;
   const coverHeight = coverDimensions.height;
   const spineWidth = coverDimensions.spine_width;
   const bleed = coverDimensions.bleed;
-
   const trimWidth = (coverWidth - spineWidth - bleed * 2) / 2;
   const trimHeight = coverHeight - bleed * 2;
 
   const coverPage = pdfDoc.addPage([coverWidth, coverHeight]);
+  coverPage.drawRectangle({ x: 0, y: 0, width: coverWidth, height: coverHeight, color: template.bgColor });
 
-  coverPage.drawRectangle({
-    x: 0,
-    y: 0,
-    width: coverWidth,
-    height: coverHeight,
-    color: rgb(1, 1, 1),
-  });
-
-  const frontCoverX = bleed + trimWidth + spineWidth;
-  const frontCoverWidth = trimWidth;
-  const frontCoverY = bleed;
-
-  coverPage.drawRectangle({
-    x: frontCoverX + 18,
-    y: frontCoverY + 18,
-    width: frontCoverWidth - 36,
-    height: trimHeight - 36,
-    borderColor: rgb(0.3, 0.3, 0.3),
-    borderWidth: 2,
-    color: rgb(0.97, 0.97, 0.95),
-  });
-
-  const titleFontSize = Math.min(32, Math.max(18, 320 / Math.max(bookTitle.length, 1)));
-  const titleLines = wrapText(bookTitle, Math.floor(frontCoverWidth / (titleFontSize * 0.6)));
-
-  titleLines.forEach((line, i) => {
-    const lineWidth = timesRomanBold.widthOfTextAtSize(line, titleFontSize);
-    coverPage.drawText(line, {
-      x: frontCoverX + (frontCoverWidth - lineWidth) / 2,
-      y: bleed + trimHeight * 0.55 - i * (titleFontSize + 8),
-      font: timesRomanBold,
-      size: titleFontSize,
-      color: rgb(0.08, 0.08, 0.08),
-    });
-  });
-
-  if (subtitle) {
-    const subFontSize = 14;
-    const subLines = wrapText(subtitle, Math.floor(frontCoverWidth / (subFontSize * 0.6)));
-    subLines.forEach((line, i) => {
-      const lineWidth = timesRoman.widthOfTextAtSize(line, subFontSize);
-      coverPage.drawText(line, {
-        x: frontCoverX + (frontCoverWidth - lineWidth) / 2,
-        y: bleed + trimHeight * 0.55 - titleLines.length * (titleFontSize + 8) - 24 - i * (subFontSize + 6),
-        font: timesRoman,
-        size: subFontSize,
-        color: rgb(0.35, 0.35, 0.35),
-      });
-    });
-  }
-
-  const coloringText = "A Personalized Coloring Book";
-  const coloringWidth = timesRoman.widthOfTextAtSize(coloringText, 12);
-  coverPage.drawText(coloringText, {
-    x: frontCoverX + (frontCoverWidth - coloringWidth) / 2,
-    y: bleed + 60,
-    font: timesRoman,
-    size: 12,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  const brandText = "ColorGifts";
-  const brandWidth = helveticaBold.widthOfTextAtSize(brandText, 14);
-  coverPage.drawText(brandText, {
-    x: frontCoverX + (frontCoverWidth - brandWidth) / 2,
-    y: bleed + 36,
-    font: helveticaBold,
-    size: 14,
-    color: rgb(0.2, 0.2, 0.2),
-  });
+  const frontX = bleed + trimWidth + spineWidth;
+  drawTemplateCoverContent(
+    coverPage, template, bookTitle, subtitle, tagline, pageCount,
+    fonts, frontX, bleed, trimWidth, trimHeight
+  );
 
   if (spineWidth > 28) {
     const spineCenterX = bleed + trimWidth + spineWidth / 2;
-    const spineCenterY = coverHeight / 2;
-
     const spineTitleFontSize = Math.min(14, spineWidth * 0.5);
+    coverPage.drawRectangle({
+      x: bleed + trimWidth, y: bleed,
+      width: spineWidth, height: trimHeight,
+      color: template.bgColor,
+    });
     coverPage.drawText(bookTitle, {
       x: spineCenterX + helveticaBold.widthOfTextAtSize(bookTitle, spineTitleFontSize) / 2,
-      y: spineCenterY,
+      y: coverHeight / 2,
       font: helveticaBold,
       size: spineTitleFontSize,
-      color: rgb(0.08, 0.08, 0.08),
+      color: template.titleColor,
       rotate: degrees(-90),
     });
   }
 
   const backCoverX = bleed;
-  const backCoverWidth = trimWidth;
-
+  coverPage.drawRectangle({ x: backCoverX, y: bleed, width: trimWidth, height: trimHeight, color: template.bgColor });
+  const inset = 14;
   coverPage.drawRectangle({
-    x: backCoverX + 18,
-    y: bleed + 18,
-    width: backCoverWidth - 36,
-    height: trimHeight - 36,
-    borderColor: rgb(0.85, 0.85, 0.85),
+    x: backCoverX + inset, y: bleed + inset,
+    width: trimWidth - inset * 2, height: trimHeight - inset * 2,
+    borderColor: template.borderColor,
     borderWidth: 1,
-    color: rgb(0.98, 0.98, 0.98),
+    color: template.bgColor,
   });
 
-  const backTitleText = "ColorGifts";
-  const backTitleSize = 22;
-  const backTitleWidth = helveticaBold.widthOfTextAtSize(backTitleText, backTitleSize);
-  coverPage.drawText(backTitleText, {
-    x: backCoverX + (backCoverWidth - backTitleWidth) / 2,
-    y: bleed + trimHeight - 80,
-    font: helveticaBold,
-    size: backTitleSize,
-    color: rgb(0.1, 0.1, 0.1),
+  const backTitleSize = 20;
+  const backTitleWidth = helveticaBold.widthOfTextAtSize("ColorGifts", backTitleSize);
+  coverPage.drawText("ColorGifts", {
+    x: backCoverX + (trimWidth - backTitleWidth) / 2,
+    y: bleed + trimHeight - 72,
+    font: helveticaBold, size: backTitleSize, color: template.accentColor,
   });
 
   const backDesc = "Turn your favorite memories into a beautiful\npersonalized coloring book for the whole family.";
-  const backDescLines = backDesc.split("\n");
-  backDescLines.forEach((line, i) => {
-    const lineWidth = timesRoman.widthOfTextAtSize(line, 11);
+  backDesc.split("\n").forEach((line, i) => {
+    const lw = timesRoman.widthOfTextAtSize(line, 11);
     coverPage.drawText(line, {
-      x: backCoverX + (backCoverWidth - lineWidth) / 2,
-      y: bleed + trimHeight - 130 - i * 20,
-      font: timesRoman,
-      size: 11,
-      color: rgb(0.4, 0.4, 0.4),
+      x: backCoverX + (trimWidth - lw) / 2,
+      y: bleed + trimHeight - 115 - i * 20,
+      font: timesRoman, size: 11, color: template.taglineColor,
     });
   });
 
   const pageCountText = `${pageCount} Coloring Pages`;
   const pageCountWidth = helvetica.widthOfTextAtSize(pageCountText, 10);
   coverPage.drawText(pageCountText, {
-    x: backCoverX + (backCoverWidth - pageCountWidth) / 2,
+    x: backCoverX + (trimWidth - pageCountWidth) / 2,
     y: bleed + 36,
-    font: helvetica,
-    size: 10,
-    color: rgb(0.6, 0.6, 0.6),
+    font: helvetica, size: 10, color: template.taglineColor,
   });
 
   const pdfBytes = await pdfDoc.save();
@@ -272,78 +359,23 @@ export async function generateCoverPdf(
 export async function generateSimpleCoverPdf(
   bookTitle: string,
   subtitle: string | null | undefined,
-  pageCount: number
+  pageCount: number,
+  templateId: CoverTemplate = "classic",
+  tagline?: string | null
 ): Promise<Buffer> {
+  const template = TEMPLATES[templateId] ?? TEMPLATES.classic;
   const pdfDoc = await PDFDocument.create();
   const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const timesRomanBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
   const timesRoman = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+  const fonts = { helveticaBold, helvetica, timesRomanBold, timesRoman };
 
   const coverPage = pdfDoc.addPage([PAGE_WIDTH_PT, PAGE_HEIGHT_PT]);
-
-  coverPage.drawRectangle({
-    x: 0, y: 0,
-    width: PAGE_WIDTH_PT, height: PAGE_HEIGHT_PT,
-    color: rgb(1, 1, 1),
-  });
-
-  coverPage.drawRectangle({
-    x: 18, y: 18,
-    width: PAGE_WIDTH_PT - 36, height: PAGE_HEIGHT_PT - 36,
-    borderColor: rgb(0.3, 0.3, 0.3),
-    borderWidth: 2,
-    color: rgb(0.97, 0.97, 0.95),
-  });
-
-  const titleFontSize = Math.min(36, Math.max(18, 360 / Math.max(bookTitle.length, 1)));
-  const titleLines = wrapText(bookTitle, Math.floor(PAGE_WIDTH_PT / (titleFontSize * 0.6)));
-
-  titleLines.forEach((line, i) => {
-    const lineWidth = timesRomanBold.widthOfTextAtSize(line, titleFontSize);
-    coverPage.drawText(line, {
-      x: (PAGE_WIDTH_PT - lineWidth) / 2,
-      y: PAGE_HEIGHT_PT * 0.6 - i * (titleFontSize + 8),
-      font: timesRomanBold,
-      size: titleFontSize,
-      color: rgb(0.08, 0.08, 0.08),
-    });
-  });
-
-  if (subtitle) {
-    const subFontSize = 16;
-    const subLines = wrapText(subtitle, Math.floor(PAGE_WIDTH_PT / (subFontSize * 0.6)));
-    subLines.forEach((line, i) => {
-      const lineWidth = timesRoman.widthOfTextAtSize(line, subFontSize);
-      coverPage.drawText(line, {
-        x: (PAGE_WIDTH_PT - lineWidth) / 2,
-        y: PAGE_HEIGHT_PT * 0.6 - titleLines.length * (titleFontSize + 8) - 30 - i * (subFontSize + 6),
-        font: timesRoman,
-        size: subFontSize,
-        color: rgb(0.35, 0.35, 0.35),
-      });
-    });
-  }
-
-  const coloringText = "A Personalized Coloring Book";
-  const coloringWidth = timesRoman.widthOfTextAtSize(coloringText, 13);
-  coverPage.drawText(coloringText, {
-    x: (PAGE_WIDTH_PT - coloringWidth) / 2,
-    y: 90,
-    font: timesRoman,
-    size: 13,
-    color: rgb(0.5, 0.5, 0.5),
-  });
-
-  const brandText = "ColorGifts";
-  const brandWidth = helveticaBold.widthOfTextAtSize(brandText, 16);
-  coverPage.drawText(brandText, {
-    x: (PAGE_WIDTH_PT - brandWidth) / 2,
-    y: 54,
-    font: helveticaBold,
-    size: 16,
-    color: rgb(0.2, 0.2, 0.2),
-  });
+  drawTemplateCoverContent(
+    coverPage, template, bookTitle, subtitle, tagline, pageCount,
+    fonts, 0, 0, PAGE_WIDTH_PT, PAGE_HEIGHT_PT
+  );
 
   const pdfBytes = await pdfDoc.save();
   return Buffer.from(pdfBytes);
@@ -372,9 +404,7 @@ export async function uploadPdfBuffer(pdfBuffer: Buffer, filename: string): Prom
   const uploadResponse = await fetch(uploadUrl, {
     method: "PUT",
     body: pdfBuffer,
-    headers: {
-      "Content-Type": "application/pdf",
-    },
+    headers: { "Content-Type": "application/pdf" },
   });
 
   if (!uploadResponse.ok) {

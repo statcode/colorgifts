@@ -7,6 +7,7 @@
  */
 
 export * from "./book";
+export * from "./bookCoverTemplate";
 export * from "./bookStatus";
 export * from "./bookStyle";
 export * from "./coloringPage";
@@ -36,6 +37,7 @@ export * from "./requestUploadUrlBody";
 export * from "./requestUploadUrlResponse";
 export * from "./shippingAddress";
 export * from "./updateBookBody";
+export * from "./updateBookBodyCoverTemplate";
 export * from "./updateBookBodyStatus";
 export * from "./updateBookBodyStyle";
 export * from "./updatePageBody";

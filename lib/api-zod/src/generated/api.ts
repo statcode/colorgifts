@@ -31,6 +31,10 @@ export const ListBooksResponseItem = zod.object({
   coverPdfPath: zod.string().nullish(),
   luluPrintJobId: zod.string().nullish(),
   luluStatus: zod.string().nullish(),
+  coverTemplate: zod
+    .enum(["classic", "sunshine", "ocean", "garden", "starlight", "rainbow"])
+    .optional(),
+  coverTagline: zod.string().nullish(),
   pageCount: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -67,6 +71,10 @@ export const GetBookResponse = zod.object({
   coverPdfPath: zod.string().nullish(),
   luluPrintJobId: zod.string().nullish(),
   luluStatus: zod.string().nullish(),
+  coverTemplate: zod
+    .enum(["classic", "sunshine", "ocean", "garden", "starlight", "rainbow"])
+    .optional(),
+  coverTagline: zod.string().nullish(),
   pageCount: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
@@ -86,6 +94,10 @@ export const UpdateBookBody = zod.object({
   style: zod.enum(["simple", "cartoon", "detailed"]).optional(),
   status: zod.enum(["draft", "generating", "ready", "ordered"]).optional(),
   coverImagePath: zod.string().nullish(),
+  coverTemplate: zod
+    .enum(["classic", "sunshine", "ocean", "garden", "starlight", "rainbow"])
+    .optional(),
+  coverTagline: zod.string().nullish(),
 });
 
 export const UpdateBookResponse = zod.object({
@@ -101,6 +113,10 @@ export const UpdateBookResponse = zod.object({
   coverPdfPath: zod.string().nullish(),
   luluPrintJobId: zod.string().nullish(),
   luluStatus: zod.string().nullish(),
+  coverTemplate: zod
+    .enum(["classic", "sunshine", "ocean", "garden", "starlight", "rainbow"])
+    .optional(),
+  coverTagline: zod.string().nullish(),
   pageCount: zod.number(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),

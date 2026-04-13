@@ -5,6 +5,7 @@
  * ColorGifts API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookCoverTemplate } from "./bookCoverTemplate";
 import type { BookStatus } from "./bookStatus";
 import type { BookStyle } from "./bookStyle";
 
@@ -29,6 +30,9 @@ export interface Book {
   luluPrintJobId?: string | null;
   /** @nullable */
   luluStatus?: string | null;
+  coverTemplate?: BookCoverTemplate;
+  /** @nullable */
+  coverTagline?: string | null;
   pageCount: number;
   createdAt: Date;
   updatedAt: Date;

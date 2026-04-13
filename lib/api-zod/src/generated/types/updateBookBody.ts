@@ -5,6 +5,7 @@
  * ColorGifts API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { UpdateBookBodyCoverTemplate } from "./updateBookBodyCoverTemplate";
 import type { UpdateBookBodyStatus } from "./updateBookBodyStatus";
 import type { UpdateBookBodyStyle } from "./updateBookBodyStyle";
 
@@ -18,4 +19,7 @@ export interface UpdateBookBody {
   status?: UpdateBookBodyStatus;
   /** @nullable */
   coverImagePath?: string | null;
+  coverTemplate?: UpdateBookBodyCoverTemplate;
+  /** @nullable */
+  coverTagline?: string | null;
 }

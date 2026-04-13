@@ -15,6 +15,8 @@ export const booksTable = pgTable("books", {
   coverPdfPath: text("cover_pdf_path"),
   luluPrintJobId: text("lulu_print_job_id"),
   luluStatus: text("lulu_status"),
+  coverTemplate: text("cover_template").notNull().default("classic"),
+  coverTagline: text("cover_tagline"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -61,6 +61,7 @@ router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
 
     logger.info({ bookId }, "Generating cover PDF");
     let coverPdfBuffer: Buffer;
+    const templateId = (book.coverTemplate ?? "classic") as import("../lib/pdfGeneration").CoverTemplate;
 
     try {
       const coverDimensions = await getLuluCoverDimensions(readyPages.length);
@@ -68,11 +69,13 @@ router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
         book.title,
         book.subtitle,
         readyPages.length,
-        coverDimensions
+        coverDimensions,
+        templateId,
+        book.coverTagline
       );
     } catch (err) {
       logger.warn({ err }, "Failed to get Lulu cover dimensions, using simple cover");
-      coverPdfBuffer = await generateSimpleCoverPdf(book.title, book.subtitle, readyPages.length);
+      coverPdfBuffer = await generateSimpleCoverPdf(book.title, book.subtitle, readyPages.length, templateId, book.coverTagline);
     }
 
     const coverPdfPath = await uploadPdfBuffer(coverPdfBuffer, `${book.title}-cover.pdf`);
