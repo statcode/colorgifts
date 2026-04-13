@@ -734,7 +734,7 @@ export default function CreateBook() {
           <div className="animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="text-center mb-10">
               <h1 className="text-4xl font-serif font-bold mb-3">Add your memories</h1>
-              <p className="text-muted-foreground text-lg">Upload 10–40 photos — each becomes a coloring page. Clear faces and simple backgrounds work best.</p>
+              <p className="text-muted-foreground text-lg">Upload 2–40 photos — each becomes a coloring page. Clear faces and simple backgrounds work best.</p>
             </div>
 
             <Card className="p-8 rounded-[2rem] border-border shadow-sm mb-8">
@@ -765,10 +765,10 @@ export default function CreateBook() {
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-bold text-lg">
                       {files.length} {files.length === 1 ? 'photo' : 'photos'} added
-                      {files.length < 10 && (
-                        <span className="ml-2 text-sm font-normal text-amber-600">({10 - files.length} more needed)</span>
+                      {files.length < 2 && (
+                        <span className="ml-2 text-sm font-normal text-amber-600">({2 - files.length} more needed)</span>
                       )}
-                      {files.length >= 10 && (
+                      {files.length >= 2 && (
                         <span className="ml-2 text-sm font-normal text-primary">✓ Minimum met</span>
                       )}
                     </h4>
@@ -778,8 +778,8 @@ export default function CreateBook() {
                   </div>
                   <div className="w-full bg-muted rounded-full h-1.5 mb-4">
                     <div
-                      className={cn("h-full rounded-full transition-all duration-300", files.length >= 10 ? "bg-primary" : "bg-amber-400")}
-                      style={{ width: `${Math.min((files.length / 10) * 100, 100)}%` }}
+                      className={cn("h-full rounded-full transition-all duration-300", files.length >= 2 ? "bg-primary" : "bg-amber-400")}
+                      style={{ width: `${Math.min((files.length / 2) * 100, 100)}%` }}
                     />
                   </div>
                   
@@ -816,7 +816,7 @@ export default function CreateBook() {
                 onClick={handleUploadAndGenerate} 
                 size="lg" 
                 className="rounded-full h-14 px-10 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all"
-                disabled={files.length < 10 || isUploading}
+                disabled={files.length < 2 || isUploading}
               >
                 {isUploading ? (
                   <>
