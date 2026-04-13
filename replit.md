@@ -18,6 +18,7 @@ pnpm workspace monorepo using TypeScript. This project is **ColorGifts** — a w
 - **Build**: esbuild (CJS bundle)
 - **AI**: OpenAI gpt-image-1 via Replit AI Integrations
 - **Storage**: Google Cloud Storage (Replit Object Storage)
+- **Auth**: Clerk (white-label, auto-provisioned keys)
 
 ## Key Commands
 

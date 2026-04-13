@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAuth, SignUp, SignIn } from "@clerk/react";
 import { 
   useCreateBook, 
   useRequestUploadUrl, 
@@ -15,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, UploadCloud, X, Wand2, ImageIcon, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -32,15 +34,21 @@ const step1Schema = z.object({
 
 type Step1Values = z.infer<typeof step1Schema>;
 
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export default function CreateBook() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isSignedIn, isLoaded } = useAuth();
   
   const [step, setStep] = useState(1);
   const [bookId, setBookId] = useState<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authView, setAuthView] = useState<"sign-up" | "sign-in">("sign-up");
+  const pendingDataRef = useRef<Step1Values | null>(null);
 
   const createBook = useCreateBook();
   const requestUploadUrl = useRequestUploadUrl();
@@ -59,7 +67,7 @@ export default function CreateBook() {
     }
   });
 
-  const onSubmitStep1 = async (data: Step1Values) => {
+  const proceedWithBookCreation = async (data: Step1Values) => {
     try {
       const book = await createBook.mutateAsync({
         data: {
@@ -80,6 +88,24 @@ export default function CreateBook() {
       });
     }
   };
+
+  const onSubmitStep1 = async (data: Step1Values) => {
+    if (!isSignedIn) {
+      pendingDataRef.current = data;
+      setShowAuthModal(true);
+      return;
+    }
+    await proceedWithBookCreation(data);
+  };
+
+  useEffect(() => {
+    if (isSignedIn && pendingDataRef.current && showAuthModal) {
+      setShowAuthModal(false);
+      const data = pendingDataRef.current;
+      pendingDataRef.current = null;
+      proceedWithBookCreation(data);
+    }
+  }, [isSignedIn]);
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -405,6 +431,39 @@ export default function CreateBook() {
         )}
 
       </div>
+
+      {/* Auth Modal */}
+      <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
+        <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-fit overflow-visible">
+          <DialogTitle className="sr-only">Sign up to continue</DialogTitle>
+          <div className="flex flex-col items-center gap-4">
+            {authView === "sign-up" ? (
+              <SignUp
+                routing="hash"
+                signInUrl={`${basePath}/sign-in`}
+                appearance={{ elements: { rootBox: "shadow-2xl rounded-[2rem] overflow-hidden" } }}
+              />
+            ) : (
+              <SignIn
+                routing="hash"
+                signUpUrl={`${basePath}/sign-up`}
+                appearance={{ elements: { rootBox: "shadow-2xl rounded-[2rem] overflow-hidden" } }}
+              />
+            )}
+            <p className="text-sm text-muted-foreground">
+              {authView === "sign-up" ? (
+                <>Already have an account?{" "}
+                  <button className="text-primary font-semibold underline underline-offset-2" onClick={() => setAuthView("sign-in")}>Sign in</button>
+                </>
+              ) : (
+                <>Don't have an account?{" "}
+                  <button className="text-primary font-semibold underline underline-offset-2" onClick={() => setAuthView("sign-up")}>Sign up</button>
+                </>
+              )}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
