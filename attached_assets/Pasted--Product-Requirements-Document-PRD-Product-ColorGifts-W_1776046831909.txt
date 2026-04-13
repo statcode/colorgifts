@@ -1,0 +1,374 @@
+# 📄 Product Requirements Document (PRD)
+## Product: ColorGifts (Working Name)
+## Version: MVP 1.0
+
+---
+
+# Tech Stack
+- Please built using Angular 20 on the front-end and Supabase for database if needed
+- component ts files and html files should be separate for design vs logic separation
+- a services folder should be created for all services and API endpoints needed
+
+# 1. Product Overview
+
+ColorGifts is a web application that allows users to upload personal photos and automatically convert them into printable coloring books. Users can preview, customize, and order a physical book delivered to their home or download a printable PDF.
+
+The product focuses on **emotional gifting experiences**, not just AI image generation.
+
+Primary output formats:
+- Printed coloring book (via Printify or Lulu)
+- Digital PDF download
+
+---
+
+# 2. Problem Statement
+
+People have thousands of meaningful personal photos (kids, pets, memories) but:
+- They are passive (stored in phones, rarely used)
+- Photo books are static and expensive
+- Existing AI tools do not produce physical, gift-ready experiences
+
+There is no simple product that transforms personal memories into **interactive, creative coloring books**.
+
+---
+
+# 3. Target Users
+
+## Primary Audience (MVP Focus)
+- Parents (especially mothers with children ages 3–8)
+- Looking for educational + creative activities
+- Buy personalized gifts regularly
+
+## Secondary Audiences
+- Pet owners (turn pets into coloring books)
+- Couples (anniversaries, memories)
+- Grandparents (family memory gifts)
+
+---
+
+# 4. Core Value Proposition
+
+> “Turn your favorite memories into a personalized coloring book in minutes.”
+
+Key emotional drivers:
+- Personalization
+- Giftability
+- Nostalgia
+- Creativity for children
+
+---
+
+# 5. MVP Scope
+
+## Must-Have Features
+
+### 5.1 Landing Page
+- Hero section with before/after transformation (photo → coloring page → printed book)
+- Clear CTA: “Create Your Coloring Book”
+- Simple explanation of process (3 steps max)
+
+---
+
+### 5.2 Photo Upload System
+- Drag & drop upload
+- Support multiple images (5–20 recommended)
+- Mobile-first upload experience
+- Basic validation (image size/type)
+
+---
+
+### 5.3 Style Selection
+Users choose output style:
+
+- Simple (Ages 3–5)
+- Cartoon Style (Ages 5–8)
+- Detailed (Older kids/adults)
+
+This affects image processing prompt.
+
+---
+
+### 5.4 AI Coloring Page Generation
+System converts uploaded photos into:
+- Clean black-and-white line drawings
+- Printable coloring page format
+- Consistent style across pages
+
+Output requirements:
+- High contrast
+- No grayscale shading
+- No noise or artifacts
+- Consistent stroke thickness
+
+---
+
+### 5.5 Preview Gallery
+- Show generated pages before purchase
+- Allow re-generation (basic retry button)
+- Display as flipbook or grid view
+
+---
+
+### 5.6 Book Builder
+- Auto-layout pages into book format
+- Add:
+  - Title (user-defined)
+  - Subtitle (optional)
+  - Dedication page
+- Preview full book structure
+
+---
+
+### 5.7 Checkout System
+Two purchase options:
+
+1. Digital PDF download
+2. Printed book (physical delivery)
+
+Payment via Stripe.
+
+Pricing (MVP suggestion):
+- PDF: $9.99
+- Printed book: $19.99–$29.99
+
+---
+
+### 5.8 Fulfillment Integration
+Use print-on-demand service:
+- Printify API OR Lulu API
+
+Functionality:
+- Send generated PDF/book layout to print provider
+- Handle order tracking (basic)
+
+---
+
+### 5.9 Share Page (Viral Loop)
+After purchase:
+- Display book preview
+- Allow sharing link
+- “Create yours” CTA for referrals
+
+---
+
+# 6. User Flow
+
+1. Landing page
+2. Click “Create Book”
+3. Upload photos
+4. Select style
+5. AI generates coloring pages
+6. Preview results
+7. Customize book (title, cover)
+8. Checkout
+9. Order fulfillment
+10. Share result
+
+---
+
+# 7. Technical Requirements
+
+## Frontend
+- React (or Lovable-generated UI)
+- Mobile-first responsive design
+- Minimal UI, image-focused
+
+---
+
+## Backend
+- Node.js or serverless functions
+- Handles:
+  - Image uploads
+  - AI processing requests
+  - Book generation logic
+
+---
+
+## AI Processing
+Image-to-line-art transformation using:
+- OpenAI image models OR
+- Replicate image-to-line-art models
+
+Processing rules:
+- Remove color
+- Enhance outlines
+- Normalize stroke thickness
+- Ensure print readiness
+
+---
+
+## Storage
+- Cloud storage (S3 or Cloudinary)
+- Store:
+  - Original images
+  - Processed coloring pages
+  - Final book PDFs
+
+---
+
+## Payment
+- Stripe checkout integration
+
+---
+
+## Printing
+- Printify API OR Lulu API
+- Generate:
+  - PDF book file
+  - Cover file
+  - Page layout file
+
+---
+
+# 8. UI/UX Guidelines
+
+Design inspiration:
+- Clean, minimal aesthetic similar to modern photo book platforms
+- Strong visual storytelling
+
+Key principles:
+- Visual-first experience
+- No technical jargon
+- Minimal steps to purchase
+- Emotional framing over technical framing
+
+---
+
+## Key Screens
+
+### 1. Landing Page
+- Hero image transformation
+- Simple 3-step explanation
+- CTA button
+
+---
+
+### 2. Upload Screen
+- Drag & drop interface
+- “Upload your memories”
+
+---
+
+### 3. Style Selection Screen
+- Visual style cards
+- Preview examples for each style
+
+---
+
+### 4. Preview Screen
+- Side-by-side comparison:
+  - Original photo
+  - Coloring version
+- Option to regenerate
+
+---
+
+### 5. Book Builder Screen
+- Title editor
+- Cover preview
+- Page order preview
+
+---
+
+### 6. Checkout Screen
+- Product summary
+- Delivery estimate
+- Payment options
+
+---
+
+### 7. Confirmation Screen
+- Book preview
+- Share link
+- Referral CTA
+
+---
+
+# 9. MVP Simplifications (IMPORTANT)
+
+To launch quickly:
+
+- Manual backend processing allowed initially
+- No need for full automation on day 1
+- Can manually compile books for early users
+- Focus on validating demand first
+
+---
+
+# 10. Success Metrics
+
+## Conversion Metrics
+- Landing → upload conversion rate
+- Upload → purchase conversion rate
+
+## Target Benchmarks
+- 20–30% landing conversion
+- 3–5% purchase conversion
+
+## Business Metrics
+- Cost per book
+- Gross margin per order
+- Repeat purchase rate (secondary)
+
+---
+
+# 11. Risks
+
+## 1. Low perceived value
+Users may see this as “cute but not worth buying”
+
+Mitigation:
+- Strong emotional positioning
+- Gift framing
+
+---
+
+## 2. Poor AI output quality
+Bad line art reduces trust and conversions
+
+Mitigation:
+- Curated style presets
+- Manual QA in MVP stage
+
+---
+
+## 3. Weak differentiation
+Many similar tools exist
+
+Mitigation:
+- Focus on “gift experience” not “AI tool”
+- Strong storytelling layer
+
+---
+
+# 12. Differentiation Strategy
+
+This product MUST NOT be positioned as:
+
+- ❌ AI coloring generator
+- ❌ Photo-to-line-art tool
+
+It MUST be positioned as:
+
+- ✅ Personalized memory gift experience
+- ✅ Custom story-based coloring books
+- ✅ Emotional keepsake product
+
+Optional advanced differentiation:
+- Story Mode (AI generates captions per page)
+- Character Mode (child/pet as recurring character)
+- Occasion Mode (birthday, holiday, memorial books)
+
+---
+
+# 13. Future Enhancements (Post-MVP)
+
+- Subscription gift boxes
+- AI-generated storybooks (not just coloring pages)
+- Collaborative family albums
+- Marketplace for templates
+- Mobile app
+
+---
+
+# End of PRD

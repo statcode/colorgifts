@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "sPJWI7cHX2JDhLiDPqlxS"
+uri = "file://artifacts/colorgifts/src/assets/hero.png"
+type = "image"
+title = "ColorGifts Hero Image"
+
+[[generated]]
+id = "N11o4h_T6IVGz1hz1u6Wd"
+uri = "file://artifacts/colorgifts/src/assets/style-simple.png"
+type = "image"
+title = "Simple Style Example"
+
+[[generated]]
+id = "2EALLrx__zFD5vozoDqn1"
+uri = "file://artifacts/colorgifts/src/assets/style-cartoon.png"
+type = "image"
+title = "Cartoon Style Example"
+
+[[generated]]
+id = "7lDVU0oKAHmrfUkKLK7LE"
+uri = "file://artifacts/colorgifts/src/assets/style-detailed.png"
+type = "image"
+title = "Detailed Style Example"

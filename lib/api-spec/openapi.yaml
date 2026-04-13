@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ColorGifts API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: books
+    description: Coloring book operations
+  - name: uploads
+    description: Photo upload operations
+  - name: pages
+    description: Coloring page operations
+  - name: storage
+    description: Object storage operations
 paths:
   /healthz:
     get:
@@ -24,6 +32,281 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /books:
+    get:
+      operationId: listBooks
+      tags: [books]
+      summary: List all coloring books
+      responses:
+        "200":
+          description: List of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+    post:
+      operationId: createBook
+      tags: [books]
+      summary: Create a new coloring book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookBody"
+      responses:
+        "201":
+          description: Created book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          description: Invalid request
+
+  /books/{id}:
+    get:
+      operationId: getBook
+      tags: [books]
+      summary: Get a book by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Book not found
+    patch:
+      operationId: updateBook
+      tags: [books]
+      summary: Update a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookBody"
+      responses:
+        "200":
+          description: Updated book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          description: Invalid request
+        "404":
+          description: Book not found
+    delete:
+      operationId: deleteBook
+      tags: [books]
+      summary: Delete a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Book deleted
+        "404":
+          description: Book not found
+
+  /books/{id}/pages:
+    get:
+      operationId: listBookPages
+      tags: [pages]
+      summary: List all pages in a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of pages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ColoringPage"
+        "404":
+          description: Book not found
+
+  /books/{id}/generate:
+    post:
+      operationId: generateBookPages
+      tags: [books]
+      summary: Trigger AI generation for all uploaded photos in a book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Generation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResult"
+        "404":
+          description: Book not found
+
+  /pages/{id}:
+    get:
+      operationId: getPage
+      tags: [pages]
+      summary: Get a coloring page by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Page details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColoringPage"
+        "404":
+          description: Page not found
+    delete:
+      operationId: deletePage
+      tags: [pages]
+      summary: Delete a coloring page
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Page deleted
+        "404":
+          description: Page not found
+
+  /pages/{id}/regenerate:
+    post:
+      operationId: regeneratePage
+      tags: [pages]
+      summary: Regenerate a single coloring page
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Regenerated page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColoringPage"
+        "404":
+          description: Page not found
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadUrlBody"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestUploadUrlResponse"
+        "400":
+          description: Invalid request
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getObject
+      tags: [storage]
+      summary: Serve a stored object
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content
+        "404":
+          description: Object not found
+
+  /photos:
+    post:
+      operationId: createPhoto
+      tags: [uploads]
+      summary: Register an uploaded photo for a book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePhotoBody"
+      responses:
+        "201":
+          description: Created photo record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Photo"
+        "400":
+          description: Invalid request
+
+  /photos/{id}:
+    delete:
+      operationId: deletePhoto
+      tags: [uploads]
+      summary: Delete a photo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Photo deleted
+        "404":
+          description: Photo not found
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +317,179 @@ components:
       required:
         - status
 
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        subtitle:
+          type: ["string", "null"]
+        dedication:
+          type: ["string", "null"]
+        style:
+          type: string
+          enum: [simple, cartoon, detailed]
+        status:
+          type: string
+          enum: [draft, generating, ready, ordered]
+        coverImagePath:
+          type: ["string", "null"]
+        shareToken:
+          type: ["string", "null"]
+        pageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - style
+        - status
+        - pageCount
+        - createdAt
+        - updatedAt
+
+    CreateBookBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: ["string", "null"]
+        dedication:
+          type: ["string", "null"]
+        style:
+          type: string
+          enum: [simple, cartoon, detailed]
+      required:
+        - title
+        - style
+
+    UpdateBookBody:
+      type: object
+      properties:
+        title:
+          type: string
+        subtitle:
+          type: ["string", "null"]
+        dedication:
+          type: ["string", "null"]
+        style:
+          type: string
+          enum: [simple, cartoon, detailed]
+        status:
+          type: string
+          enum: [draft, generating, ready, ordered]
+        coverImagePath:
+          type: ["string", "null"]
+
+    ColoringPage:
+      type: object
+      properties:
+        id:
+          type: integer
+        bookId:
+          type: integer
+        photoId:
+          type: integer
+        originalImagePath:
+          type: string
+        coloringImagePath:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, generating, ready, failed]
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bookId
+        - photoId
+        - originalImagePath
+        - status
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    Photo:
+      type: object
+      properties:
+        id:
+          type: integer
+        bookId:
+          type: integer
+        objectPath:
+          type: string
+        fileName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bookId
+        - objectPath
+        - fileName
+        - createdAt
+
+    CreatePhotoBody:
+      type: object
+      properties:
+        bookId:
+          type: integer
+        objectPath:
+          type: string
+        fileName:
+          type: string
+      required:
+        - bookId
+        - objectPath
+        - fileName
+
+    GenerateResult:
+      type: object
+      properties:
+        message:
+          type: string
+        pagesQueued:
+          type: integer
+      required:
+        - message
+        - pagesQueued
+
+    RequestUploadUrlBody:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required:
+        - name
+        - size
+        - contentType
+
+    RequestUploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+      required:
+        - uploadURL
+        - objectPath
