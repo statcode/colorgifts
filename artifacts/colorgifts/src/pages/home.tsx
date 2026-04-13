@@ -21,7 +21,7 @@ export default function Home() {
       <section className="relative overflow-hidden pt-12 pb-24 lg:pt-24 lg:pb-32">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background"></div>
         <div className="container mx-auto px-4 md:px-6">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+          <div className="grid lg:grid-cols-[45%_55%] gap-12 lg:gap-6 items-center">
             <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent-foreground font-medium text-sm mb-6 border border-accent/30">
                 <Sparkles className="w-4 h-4" />
@@ -60,7 +60,7 @@ export default function Home() {
               <div className="flex items-end gap-2 w-full">
                 {/* Stage 1: Color Photos */}
                 <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-square">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-[4/5]">
                     <img
                       src={heroStep1}
                       alt="Your personal color photos"
@@ -77,7 +77,7 @@ export default function Home() {
 
                 {/* Stage 2: Coloring Pages */}
                 <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-square">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-[4/5]">
                     <img
                       src={heroStep2}
                       alt="AI-generated coloring pages"
@@ -94,7 +94,7 @@ export default function Home() {
 
                 {/* Stage 3: Physical Book */}
                 <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-xl border-2 border-white/60 bg-white aspect-square ring-2 ring-primary/30">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-xl border-2 border-white/60 bg-white aspect-[4/5] ring-2 ring-primary/30">
                     <img
                       src={heroStep3}
                       alt="Your printed coloring book"
