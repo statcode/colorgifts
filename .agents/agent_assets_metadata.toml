@@ -24,3 +24,9 @@ id = "7lDVU0oKAHmrfUkKLK7LE"
 uri = "file://artifacts/colorgifts/src/assets/style-detailed.png"
 type = "image"
 title = "Detailed Style Example"
+
+[[generated]]
+id = "A6FuAs1eTOVodF-SSwg_X"
+uri = "file://attached_assets/generated_images/generated_image.png"
+type = "image"
+title = "generated_image"

@@ -2,8 +2,10 @@ import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Sparkles, Heart, Wand2, ArrowRight, ImageIcon, Gift, Users, Dog, Baby, Sunset } from "lucide-react";
-import heroImg from "@/assets/hero.png";
+import { Sparkles, Heart, Wand2, ArrowRight, ImageIcon, Gift, Users, Dog, Baby, Sunset, ChevronRight } from "lucide-react";
+import heroStep1 from "@/assets/hero-step1-photos.png";
+import heroStep2 from "@/assets/hero-step2-coloring.png";
+import heroStep3 from "@/assets/hero-step3-book.png";
 import simpleStyleImg from "@/assets/style-simple.png";
 import cartoonStyleImg from "@/assets/style-cartoon.png";
 import detailedStyleImg from "@/assets/style-detailed.png";
@@ -43,19 +45,66 @@ export default function Home() {
               </div>
             </div>
             
+            {/* Three-stage transformation visual */}
             <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000 delay-200">
-              <div className="absolute -inset-4 bg-gradient-to-r from-accent/20 to-primary/20 blur-3xl rounded-full -z-10 opacity-70"></div>
-              <img 
-                src={heroImg} 
-                alt="Transformation from photo to coloring book" 
-                className="w-full h-auto rounded-[2rem] shadow-2xl border-4 border-white/50 rotate-2 hover:rotate-0 transition-transform duration-700 object-cover"
-              />
-              
-              {/* Floating badges */}
-              <div className="absolute -top-6 -right-6 bg-white p-4 rounded-2xl shadow-xl rotate-12 animate-in zoom-in duration-700 delay-700">
-                <div className="flex items-center gap-2 text-primary font-bold font-serif text-lg">
-                  <Heart className="w-5 h-5 fill-current" />
+              <div className="absolute -inset-8 bg-gradient-to-r from-accent/20 to-primary/20 blur-3xl rounded-full -z-10 opacity-60"></div>
+
+              {/* Floating badge */}
+              <div className="absolute -top-5 right-0 bg-white px-3 py-2 rounded-2xl shadow-xl rotate-6 animate-in zoom-in duration-700 delay-700 border border-border z-10">
+                <div className="flex items-center gap-1.5 text-primary font-bold font-serif text-sm">
+                  <Heart className="w-3.5 h-3.5 fill-current" />
                   Made with love
+                </div>
+              </div>
+
+              <div className="flex items-end gap-2 w-full">
+                {/* Stage 1: Color Photos */}
+                <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-square">
+                    <img
+                      src={heroStep1}
+                      alt="Your personal color photos"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Your Photos</span>
+                </div>
+
+                {/* Arrow 1 */}
+                <div className="shrink-0 pb-6">
+                  <ChevronRight className="w-6 h-6 text-primary" strokeWidth={2.5} />
+                </div>
+
+                {/* Stage 2: Coloring Pages */}
+                <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-square">
+                    <img
+                      src={heroStep2}
+                      alt="AI-generated coloring pages"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Coloring Pages</span>
+                </div>
+
+                {/* Arrow 2 */}
+                <div className="shrink-0 pb-6">
+                  <ChevronRight className="w-6 h-6 text-primary" strokeWidth={2.5} />
+                </div>
+
+                {/* Stage 3: Physical Book */}
+                <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
+                  <div className="relative w-full overflow-hidden rounded-2xl shadow-xl border-2 border-white/60 bg-white aspect-square ring-2 ring-primary/30">
+                    <img
+                      src={heroStep3}
+                      alt="Your printed coloring book"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/80 to-transparent p-2 text-center">
+                      <span className="text-white text-[10px] font-bold uppercase tracking-wider">Printed Book</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary whitespace-nowrap">Your Book</span>
                 </div>
               </div>
             </div>
