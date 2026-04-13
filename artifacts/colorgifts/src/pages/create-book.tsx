@@ -193,6 +193,14 @@ export default function CreateBook() {
     },
   });
 
+  // Poll individual page statuses during generation to show per-image progress
+  const { data: generatingPagesData } = useListBookPages(bookId ?? 0, {
+    query: {
+      enabled: step === 3 && !generationComplete && !!bookId,
+      refetchInterval: 2000,
+    },
+  });
+
   // Fetch pages once generation completes
   const { data: pagesData } = useListBookPages(bookId ?? 0, {
     query: { enabled: step === 3 && bookData?.status === BookStatus.ready && !!bookId },
@@ -670,21 +678,75 @@ export default function CreateBook() {
         )}
 
         {/* Step 3: Generate Pages — Loading phase */}
-        {step === 3 && !generationComplete && (
-          <div className="animate-in fade-in zoom-in-95 duration-1000 text-center py-20">
-            <div className="relative w-32 h-32 mx-auto mb-8">
-              <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
-              <div className="absolute inset-2 bg-accent/30 rounded-full animate-pulse delay-150"></div>
-              <div className="absolute inset-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-xl">
-                <Wand2 className="w-12 h-12 animate-bounce" />
+        {step === 3 && !generationComplete && (() => {
+          const allPages = generatingPagesData ?? [];
+          const total = allPages.length;
+          const readyCount = allPages.filter(p => p.status === "ready").length;
+          const currentlyGenerating = allPages.find(p => p.status === "generating");
+          const currentIndex = currentlyGenerating
+            ? allPages.findIndex(p => p.id === currentlyGenerating.id)
+            : readyCount;
+          const progressPct = total > 0 ? Math.round((readyCount / total) * 100) : 0;
+
+          return (
+            <div className="animate-in fade-in zoom-in-95 duration-1000 text-center py-16">
+              <div className="relative w-32 h-32 mx-auto mb-8">
+                <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
+                <div className="absolute inset-2 bg-accent/30 rounded-full animate-pulse delay-150"></div>
+                <div className="absolute inset-4 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-xl">
+                  <Wand2 className="w-12 h-12 animate-bounce" />
+                </div>
               </div>
+              <h1 className="text-4xl font-serif font-bold mb-3">Sprinkling Magic Dust…</h1>
+              <p className="text-lg text-muted-foreground max-w-lg mx-auto mb-10">
+                Our AI is carefully tracing each photo into a coloring page. This usually takes 1–3 minutes.
+              </p>
+
+              {total > 0 && (
+                <div className="max-w-md mx-auto">
+                  {/* Progress bar */}
+                  <div className="flex items-center justify-between text-sm font-medium mb-2">
+                    <span className="text-muted-foreground">
+                      {currentlyGenerating
+                        ? `Converting photo ${currentIndex + 1} of ${total}…`
+                        : readyCount < total
+                          ? `Starting next photo…`
+                          : `Wrapping up…`}
+                    </span>
+                    <span className="text-primary font-bold">{readyCount} / {total}</span>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+                      style={{ width: `${progressPct}%` }}
+                    />
+                  </div>
+
+                  {/* Mini thumbnails of completed pages */}
+                  {readyCount > 0 && (
+                    <div className="mt-6 flex flex-wrap gap-2 justify-center">
+                      {allPages
+                        .filter(p => p.status === "ready" && p.coloringImagePath)
+                        .slice(-8)
+                        .map((p) => (
+                          <div
+                            key={p.id}
+                            className="w-12 h-12 rounded-lg overflow-hidden border-2 border-primary/30 animate-in fade-in zoom-in-95 duration-300 bg-muted"
+                          >
+                            <img
+                              src={getImageUrl(p.coloringImagePath!)}
+                              alt="Completed page"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <h1 className="text-4xl font-serif font-bold mb-4">Sprinkling Magic Dust...</h1>
-            <p className="text-xl text-muted-foreground max-w-lg mx-auto">
-              Our AI illustrators are carefully tracing your photos. This usually takes a minute or two. Hang tight!
-            </p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Step 3: Generate Pages — Page Editor phase */}
         {step === 3 && generationComplete && (
