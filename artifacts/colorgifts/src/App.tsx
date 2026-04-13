@@ -11,6 +11,7 @@ import BookDetail from "@/pages/book-detail";
 import BookPreview from "@/pages/book-preview";
 import Checkout from "@/pages/checkout";
 import Share from "@/pages/share";
+import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ function ClerkQueryClientCacheInvalidator() {
 function Router() {
   return (
     <Switch>
+      <Route path="/admin" component={AdminPage} />
       <Route path="/" component={Home} />
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />

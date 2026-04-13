@@ -5,6 +5,7 @@ import booksRouter from "./books";
 import pagesRouter from "./pages";
 import photosRouter from "./photos";
 import luluRouter from "./lulu";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(booksRouter);
 router.use(pagesRouter);
 router.use(photosRouter);
 router.use(luluRouter);
+router.use(adminRouter);
 
 export default router;
