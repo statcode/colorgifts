@@ -28,15 +28,15 @@ export default function Home() {
                 <span>A gift everyone will treasure</span>
               </div>
               <h1 className="text-5xl lg:text-7xl font-serif font-bold text-foreground leading-[1.1] mb-6">
-                Turn Your Favorite <span className="text-primary italic">Memories</span> Into a Coloring Book.
+                The photos on your phone <span className="text-primary italic">deserve</span> to be colored in.
               </h1>
               <p className="text-lg lg:text-xl text-muted-foreground mb-8 leading-relaxed">
-                Upload photos of family, pets, adventures, or milestones — and watch them become beautiful, personal line-art coloring pages. A meaningful gift for any age, any occasion.
+                We take your real-life moments — the lazy Sundays, birthday chaos, snuggle-worthy pets — and turn them into line-art coloring pages, packaged in a beautiful keepsake book. Print it. Ship it. Treasure it forever.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg" className="rounded-full h-14 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
-                  <Link href="/create">
-                    Start Your Book <ArrowRight className="ml-2 w-5 h-5" />
+                  <Link href="/create-book">
+                    Create Your Book <ArrowRight className="ml-2 w-5 h-5" />
                   </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline" className="rounded-full h-14 px-8 text-lg border-2 hover:bg-secondary/10">
@@ -248,7 +248,7 @@ export default function Home() {
             Start creating your personalized coloring book today. A few minutes of your time, a lifetime of memories.
           </p>
           <Button asChild size="lg" className="rounded-full h-16 px-10 text-xl bg-background text-foreground hover:bg-background/90 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
-            <Link href="/create">Create Your Book Now</Link>
+            <Link href="/create-book">Create Your Book Now</Link>
           </Button>
         </div>
       </section>

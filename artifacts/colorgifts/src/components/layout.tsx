@@ -30,7 +30,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const navLinks = [
-    { href: "/create", label: "Create a Book" },
+    { href: "/create-book", label: "Create a Book" },
     { href: "/books", label: "My Gallery" },
   ];
 
@@ -89,7 +89,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <Link href="/books" className="cursor-pointer">My Gallery</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/create" className="cursor-pointer">Create a Book</Link>
+                    <Link href="/create-book" className="cursor-pointer">Create a Book</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -103,7 +103,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </DropdownMenu>
             ) : (
               <Button asChild className="rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
-                <Link href="/create">Start Gifting</Link>
+                <Link href="/create-book">Start Gifting</Link>
               </Button>
             )}
           </nav>
@@ -135,7 +135,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
           <Button asChild size="lg" className="mt-4 rounded-full w-full bg-primary">
-            <Link href="/create" onClick={() => setIsMobileMenuOpen(false)}>Start Gifting</Link>
+            <Link href="/create-book" onClick={() => setIsMobileMenuOpen(false)}>Start Gifting</Link>
           </Button>
         </div>
       )}

@@ -33,7 +33,7 @@ export default function BookGallery() {
             <p className="text-muted-foreground text-lg">All your personalized coloring books.</p>
           </div>
           <Button asChild size="lg" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
-            <Link href="/create">
+            <Link href="/create-book">
               <PlusCircle className="w-5 h-5 mr-2" />
               New Book
             </Link>
@@ -60,7 +60,7 @@ export default function BookGallery() {
               You haven't created any coloring books yet. Start transforming your memories into magic.
             </p>
             <Button asChild size="lg" className="rounded-full h-14 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Link href="/create">Create Your First Book</Link>
+              <Link href="/create-book">Create Your First Book</Link>
             </Button>
           </div>
         ) : (
