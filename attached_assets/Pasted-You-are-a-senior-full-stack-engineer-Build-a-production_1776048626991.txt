@@ -1,0 +1,227 @@
+You are a senior full-stack engineer. Build a production-ready MVP web app based on the following requirements.
+
+---
+
+# 🧠 APP OVERVIEW
+
+Build a web app called **ColorGifts**:
+
+Users can:
+1. Upload personal photos
+2. Convert them into black-and-white coloring pages using AI
+3. Preview the results
+4. Compile them into a printable coloring book (PDF)
+5. Purchase/download the book
+
+Focus on:
+- Clean UI
+- Fast UX
+- Simple architecture
+- Mobile-first design
+
+---
+
+# 🧱 TECH STACK
+
+Use:
+
+Frontend:
+- Angular 20
+- Shadcn UI components
+
+Backend:
+- Node.js (Express)
+
+Other:
+- Stripe (for payments)
+- Cloudinary (for image storage)
+- OpenAI API (or placeholder function for image processing)
+
+---
+
+# 📁 PROJECT STRUCTURE
+
+Create a monorepo-style structure:
+
+/client → Angular 20 frontend  
+/server → Express backend  
+
+---
+
+# 🎯 CORE FEATURES (MVP)
+
+## 1. Landing Page
+- Hero section
+- CTA button: “Create Your Coloring Book”
+- Simple 3-step explanation
+
+---
+
+## 2. Upload Page
+- Drag & drop image upload
+- Allow multiple uploads (5–20 images)
+- Preview uploaded images
+
+---
+
+## 3. Style Selection
+- 3 selectable options:
+  - Simple
+  - Cartoon
+  - Detailed
+
+Store selected style in state
+
+---
+
+## 4. Image Processing (Mock First)
+Create backend endpoint:
+
+POST /process-images
+
+Input:
+- Array of image URLs
+- Selected style
+
+For MVP:
+- Simulate AI processing by converting images to grayscale + edge detection (use a simple Node library like sharp)
+
+Return:
+- Processed image URLs
+
+---
+
+## 5. Preview Page
+- Show original vs processed images side-by-side
+- Grid layout
+- “Regenerate” button (re-call API)
+
+---
+
+## 6. Book Generator
+Create backend endpoint:
+
+POST /generate-book
+
+- Accept processed images
+- Generate a downloadable PDF
+
+Use a Node PDF library (e.g. pdf-lib)
+
+Output:
+- URL to PDF file
+
+---
+
+## 7. Checkout (Stripe)
+- Simple Stripe Checkout integration
+- Product: “Custom Coloring Book”
+- After payment:
+  - Redirect to success page
+
+---
+
+## 8. Success Page
+- Show preview of generated book
+- Download PDF button
+- “Share” CTA (copy link)
+
+---
+
+# 🎨 UI/UX REQUIREMENTS
+
+- Clean, minimal UI
+- White background
+- Large imagery
+- Mobile responsive
+- Smooth transitions between steps
+
+Pages:
+- /
+- /upload
+- /style
+- /preview
+- /checkout
+- /success
+
+Use a step-based flow indicator at the top.
+
+---
+
+# 🔌 API ROUTES
+
+Implement:
+
+POST /upload (optional if using Cloudinary direct upload)
+POST /process-images
+POST /generate-book
+POST /create-checkout-session
+
+#API INTEGRATION
+- Refer to https://api.lulu.com/docs/?
+
+---
+
+# 🗄️ STATE MANAGEMENT
+
+Use React Context or simple state management:
+- Uploaded images
+- Selected style
+- Processed images
+- PDF URL
+
+---
+
+# 🔐 ENV VARIABLES
+
+Expect:
+
+- OPENAI_API_KEY
+- STRIPE_SECRET_KEY
+- CLOUDINARY_URL
+
+---
+
+# ⚠️ SIMPLIFICATIONS
+
+- No authentication required
+- No database required (store in memory or temporary storage)
+- No print-on-demand integration yet
+- Focus on working end-to-end demo
+
+---
+
+# 🧪 BONUS (If time permits)
+
+- Add loading states during processing
+- Add error handling
+- Add retry button for failed images
+
+---
+
+# 🎯 OUTPUT
+
+Generate:
+1. Full project structure
+2. All necessary files
+3. Working frontend + backend
+4. Clear instructions to run locally
+
+Make sure the app can:
+- Upload images
+- Process them
+- Generate a PDF
+- Complete a test payment
+
+---
+
+# 🚨 IMPORTANT
+
+Do NOT over-engineer.
+
+Prioritize:
+- Working flow
+- Clean UI
+- Fast iteration
+
+This is an MVP for validation, not a final product.
