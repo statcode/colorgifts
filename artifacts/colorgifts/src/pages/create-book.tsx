@@ -12,22 +12,114 @@ import {
   useGenerateBookPages,
   useGetBook,
   useUpdateBook,
+  useUpdatePage,
+  useListBookPages,
   getGetBookQueryKey,
 } from "@workspace/api-client-react";
+import type { ColoringPage } from "@workspace/api-client-react";
 import { BookStyle, CreateBookBodyStyle, BookStatus } from "@workspace/api-client-react";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, UploadCloud, X, Wand2, ImageIcon, Sparkles, FileDown, Book as BookIcon, Check, ShieldCheck } from "lucide-react";
+import { Loader2, UploadCloud, X, Wand2, ImageIcon, Sparkles, FileDown, Book as BookIcon, Check, ShieldCheck, GripVertical, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/image-utils";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import simpleStyleImg from "@/assets/style-simple.png";
 import cartoonStyleImg from "@/assets/style-cartoon.png";
 import detailedStyleImg from "@/assets/style-detailed.png";
+
+function getPriceForPages(pageCount: number): string {
+  if (pageCount <= 20) return "$24.95";
+  if (pageCount <= 30) return "$29.95";
+  if (pageCount <= 40) return "$34.95";
+  return "$49.95";
+}
+
+function getPriceTierLabel(pageCount: number): string {
+  if (pageCount <= 20) return "10–20 pages";
+  if (pageCount <= 30) return "21–30 pages";
+  if (pageCount <= 40) return "31–40 pages";
+  return "40+ pages";
+}
+
+function SortablePageRow({
+  page,
+  index,
+  onCaptionChange,
+}: {
+  page: ColoringPage & { caption: string };
+  index: number;
+  onCaptionChange: (id: number, caption: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-4 bg-card border border-border rounded-2xl p-3 shadow-sm"
+    >
+      <button
+        className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground px-1 flex-shrink-0"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-5 h-5" />
+      </button>
+
+      <div className="w-14 h-14 rounded-xl overflow-hidden bg-muted border border-border flex-shrink-0">
+        {page.coloringImagePath ? (
+          <img src={getImageUrl(page.coloringImagePath)} alt={`Page ${index + 1}`} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-5 h-5 text-muted-foreground" />
+          </div>
+        )}
+      </div>
+
+      <span className="text-sm font-medium text-muted-foreground w-14 flex-shrink-0">Page {index + 1}</span>
+
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        <Type className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <input
+          type="text"
+          value={page.caption}
+          onChange={(e) => onCaptionChange(page.id, e.target.value)}
+          placeholder="Add a caption (optional)…"
+          className="flex-1 text-sm bg-muted/50 rounded-lg px-3 py-1.5 border border-transparent focus:border-ring focus:outline-none min-w-0"
+        />
+      </div>
+    </div>
+  );
+}
 
 const step1Schema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -55,15 +147,23 @@ export default function CreateBook() {
   const pendingDataRef = useRef<Step1Values | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<"digital" | "print" | null>(null);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [editorPages, setEditorPages] = useState<(ColoringPage & { caption: string })[]>([]);
+  const [generationComplete, setGenerationComplete] = useState(false);
 
   const createBook = useCreateBook();
   const requestUploadUrl = useRequestUploadUrl();
   const createPhoto = useCreatePhoto();
   const generatePages = useGenerateBookPages();
   const updateBook = useUpdateBook();
+  const updatePage = useUpdatePage();
   const queryClient = useQueryClient();
 
-  // Poll book status during step 3 (generating) until ready, then advance to step 4
+  const dndSensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Poll book status during step 3 (generating) until ready
   const { data: bookData } = useGetBook(bookId ?? 0, {
     query: {
       enabled: step === 3 && !!bookId,
@@ -75,11 +175,18 @@ export default function CreateBook() {
     },
   });
 
+  // Fetch pages once generation completes
+  const { data: pagesData } = useListBookPages(bookId ?? 0, {
+    query: { enabled: step === 3 && bookData?.status === BookStatus.ready && !!bookId },
+  });
+
   useEffect(() => {
-    if (step === 3 && bookData?.status === BookStatus.ready) {
-      setStep(4);
+    if (step === 3 && bookData?.status === BookStatus.ready && pagesData) {
+      const sorted = [...pagesData].sort((a, b) => a.sortOrder - b.sortOrder);
+      setEditorPages(sorted.map(p => ({ ...p, caption: p.caption ?? "" })));
+      setGenerationComplete(true);
     }
-  }, [bookData?.status, step]);
+  }, [bookData?.status, pagesData, step]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -204,6 +311,30 @@ export default function CreateBook() {
       });
       setIsUploading(false);
     }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setEditorPages((pages) => {
+        const oldIdx = pages.findIndex(p => p.id === active.id);
+        const newIdx = pages.findIndex(p => p.id === over.id);
+        return arrayMove(pages, oldIdx, newIdx);
+      });
+    }
+  };
+
+  const handleCaptionChange = (id: number, caption: string) => {
+    setEditorPages(pages => pages.map(p => p.id === id ? { ...p, caption } : p));
+  };
+
+  const handleFinalizeBook = async () => {
+    if (!bookId) return;
+    // Save all sort orders and captions
+    await Promise.all(editorPages.map((page, idx) =>
+      updatePage.mutateAsync({ id: page.id, data: { sortOrder: idx, caption: page.caption || null } })
+    ));
+    setStep(4);
   };
 
   const handleOrder = async () => {
@@ -365,7 +496,7 @@ export default function CreateBook() {
           <div className="animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="text-center mb-10">
               <h1 className="text-4xl font-serif font-bold mb-3">Add your memories</h1>
-              <p className="text-muted-foreground text-lg">Upload up to 20 photos. Clear faces and simple backgrounds work best.</p>
+              <p className="text-muted-foreground text-lg">Upload 10–40 photos — each becomes a coloring page. Clear faces and simple backgrounds work best.</p>
             </div>
 
             <Card className="p-8 rounded-[2rem] border-border shadow-sm mb-8">
@@ -393,11 +524,25 @@ export default function CreateBook() {
 
               {files.length > 0 && (
                 <div className="mt-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-bold text-lg">{files.length} {files.length === 1 ? 'photo' : 'photos'} added</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-bold text-lg">
+                      {files.length} {files.length === 1 ? 'photo' : 'photos'} added
+                      {files.length < 10 && (
+                        <span className="ml-2 text-sm font-normal text-amber-600">({10 - files.length} more needed)</span>
+                      )}
+                      {files.length >= 10 && (
+                        <span className="ml-2 text-sm font-normal text-primary">✓ Minimum met</span>
+                      )}
+                    </h4>
                     <Button variant="ghost" size="sm" onClick={() => setFiles([])} className="text-muted-foreground hover:text-destructive">
                       Clear all
                     </Button>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-1.5 mb-4">
+                    <div
+                      className={cn("h-full rounded-full transition-all duration-300", files.length >= 10 ? "bg-primary" : "bg-amber-400")}
+                      style={{ width: `${Math.min((files.length / 10) * 100, 100)}%` }}
+                    />
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -433,7 +578,7 @@ export default function CreateBook() {
                 onClick={handleUploadAndGenerate} 
                 size="lg" 
                 className="rounded-full h-14 px-10 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg transition-all"
-                disabled={files.length === 0 || isUploading}
+                disabled={files.length < 10 || isUploading}
               >
                 {isUploading ? (
                   <>
@@ -451,8 +596,8 @@ export default function CreateBook() {
           </div>
         )}
 
-        {/* Step 3: Generate Pages */}
-        {step === 3 && (
+        {/* Step 3: Generate Pages — Loading phase */}
+        {step === 3 && !generationComplete && (
           <div className="animate-in fade-in zoom-in-95 duration-1000 text-center py-20">
             <div className="relative w-32 h-32 mx-auto mb-8">
               <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping"></div>
@@ -463,46 +608,105 @@ export default function CreateBook() {
             </div>
             <h1 className="text-4xl font-serif font-bold mb-4">Sprinkling Magic Dust...</h1>
             <p className="text-xl text-muted-foreground max-w-lg mx-auto">
-              Our AI illustrators are carefully tracing your photos. This usually takes a minute or two. We'll move you forward automatically!
+              Our AI illustrators are carefully tracing your photos. This usually takes a minute or two. Hang tight!
             </p>
           </div>
         )}
 
-        {/* Step 4: Order Book */}
-        {step === 4 && (
+        {/* Step 3: Generate Pages — Page Editor phase */}
+        {step === 3 && generationComplete && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Sparkles className="w-8 h-8 text-primary" />
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 mb-3">
+                <Sparkles className="w-7 h-7 text-primary" />
               </div>
-              <h1 className="text-4xl font-serif font-bold mb-2">Your book is ready!</h1>
-              <p className="text-lg text-muted-foreground">Choose how you'd like to receive it.</p>
+              <h1 className="text-3xl font-serif font-bold mb-2">Arrange your pages</h1>
+              <p className="text-muted-foreground">Drag to reorder pages, and add an optional caption to each one.</p>
             </div>
 
-            <div className="grid lg:grid-cols-5 gap-10">
-              {/* Book Summary */}
-              <div className="lg:col-span-2">
-                <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
-                  <div className="aspect-[4/3] bg-muted rounded-xl mb-6 overflow-hidden border border-border/50 flex flex-col items-center justify-center p-6 text-center bg-white">
-                    <BookIcon className="w-12 h-12 text-primary/40 mb-3" />
-                    <span className="font-serif text-xl font-bold mb-1">{bookData?.title ?? "Your Book"}</span>
-                    <span className="text-sm text-muted-foreground capitalize">{bookData?.style} Style • {bookData?.pageCount ?? "—"} pages</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t border-border">
-                    <ShieldCheck className="w-4 h-4 text-primary flex-shrink-0" />
-                    100% Satisfaction Guarantee
-                  </div>
+            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={editorPages.map(p => p.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-3 mb-8">
+                  {editorPages.map((page, idx) => (
+                    <SortablePageRow
+                      key={page.id}
+                      page={page}
+                      index={idx}
+                      onCaptionChange={handleCaptionChange}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+
+            <div className="flex justify-between pt-4">
+              <Button variant="outline" size="lg" className="rounded-full h-14 px-8 text-lg" onClick={() => { setGenerationComplete(false); setStep(2); }}>
+                Back
+              </Button>
+              <Button
+                size="lg"
+                className="rounded-full h-14 px-10 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+                onClick={handleFinalizeBook}
+                disabled={updatePage.isPending}
+              >
+                {updatePage.isPending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                Next: Order Book
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Order Book */}
+        {step === 4 && (() => {
+          const pageCount = editorPages.length || (bookData?.pageCount ?? 0);
+          const price = getPriceForPages(pageCount);
+          const tierLabel = getPriceTierLabel(pageCount);
+          return (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto">
+              <div className="text-center mb-10">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                  <BookIcon className="w-8 h-8 text-primary" />
+                </div>
+                <h1 className="text-4xl font-serif font-bold mb-2">Order your book</h1>
+                <p className="text-lg text-muted-foreground">Ready to print and ship to your door.</p>
+              </div>
+
+              {/* Pricing Tiers */}
+              <div className="bg-muted/40 rounded-2xl border border-border p-5 mb-6">
+                <h3 className="font-semibold mb-3 text-sm uppercase tracking-wider text-muted-foreground">Pricing by page count</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { label: "10–20 pages", price: "$24.95" },
+                    { label: "21–30 pages", price: "$29.95" },
+                    { label: "31–40 pages", price: "$34.95" },
+                    { label: "40+ pages", price: "$49.95" },
+                  ].map((tier) => (
+                    <div
+                      key={tier.label}
+                      className={cn(
+                        "rounded-xl p-3 text-center border-2 transition-colors",
+                        tier.label === tierLabel
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent bg-card"
+                      )}
+                    >
+                      <div className="font-bold text-lg">{tier.price}</div>
+                      <div className="text-xs text-muted-foreground">{tier.label}</div>
+                      {tier.label === tierLabel && (
+                        <div className="text-xs font-semibold text-primary mt-1">Your book</div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Format + Checkout */}
-              <div className="lg:col-span-3 space-y-4">
-                {/* Digital Option */}
+              {/* Format Selection */}
+              <div className="space-y-3 mb-6">
                 <button
                   type="button"
                   onClick={() => setSelectedFormat("digital")}
                   className={cn(
-                    "w-full text-left flex items-start p-6 rounded-2xl border-2 cursor-pointer transition-all",
+                    "w-full text-left flex items-start p-5 rounded-2xl border-2 cursor-pointer transition-all",
                     selectedFormat === "digital"
                       ? "border-primary bg-primary/5 shadow-md"
                       : "border-border hover:border-primary/50 hover:bg-muted/30 bg-card"
@@ -518,28 +722,23 @@ export default function CreateBook() {
                       <h3 className="font-bold text-lg flex items-center gap-2">
                         <FileDown className="w-5 h-5 text-muted-foreground" /> Digital PDF
                       </h3>
-                      <span className="font-bold text-lg">$9.99</span>
+                      <span className="font-bold text-lg">{price}</span>
                     </div>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      Instant download. High-res PDF, print at home as many times as you like. Perfect for gifting right away.
-                    </p>
+                    <p className="text-muted-foreground text-sm">Instant download. Print at home as many times as you like.</p>
                   </div>
                 </button>
 
-                {/* Print Option */}
                 <button
                   type="button"
                   onClick={() => setSelectedFormat("print")}
                   className={cn(
-                    "w-full text-left flex items-start p-6 rounded-2xl border-2 cursor-pointer transition-all relative overflow-hidden",
+                    "w-full text-left flex items-start p-5 rounded-2xl border-2 cursor-pointer transition-all relative overflow-hidden",
                     selectedFormat === "print"
                       ? "border-accent bg-accent/5 shadow-md"
                       : "border-border hover:border-accent/50 hover:bg-muted/30 bg-card"
                   )}
                 >
-                  {selectedFormat === "print" && (
-                    <div className="absolute top-0 right-0 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
-                  )}
+                  <div className="absolute top-0 right-0 bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-bl-lg">POPULAR</div>
                   <div className="flex items-center h-6 mr-4">
                     <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", selectedFormat === "print" ? "border-accent bg-accent" : "border-input")}>
                       {selectedFormat === "print" && <Check className="w-3 h-3 text-accent-foreground" />}
@@ -550,55 +749,60 @@ export default function CreateBook() {
                       <h3 className="font-bold text-lg flex items-center gap-2">
                         <BookIcon className="w-5 h-5 text-muted-foreground" /> Premium Printed Book
                       </h3>
-                      <span className="font-bold text-lg">$19.99</span>
+                      <span className="font-bold text-lg">{price}</span>
                     </div>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      Beautifully bound softcover on thick paper. Ships free worldwide in 3-5 days. Includes digital PDF.
-                    </p>
+                    <p className="text-muted-foreground text-sm">Beautifully bound softcover. Ships free worldwide in 3–5 days. Includes digital PDF.</p>
                     {selectedFormat === "print" && (
-                      <p className="text-xs font-medium text-primary mt-3">
+                      <p className="text-xs font-medium text-primary mt-2">
                         Estimated delivery: {new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString()}
                       </p>
                     )}
                   </div>
                 </button>
+              </div>
 
-                {/* Order Summary + Button */}
-                <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
-                  <div className="flex justify-between mb-2 text-muted-foreground text-sm">
-                    <span>Subtotal</span>
-                    <span>{selectedFormat === "print" ? "$19.99" : selectedFormat === "digital" ? "$9.99" : "$0.00"}</span>
-                  </div>
-                  <div className="flex justify-between mb-4 text-muted-foreground text-sm">
-                    <span>Shipping</span>
-                    <span>{selectedFormat === "print" ? "Free" : "—"}</span>
-                  </div>
-                  <div className="flex justify-between pt-4 border-t border-border font-bold text-xl mb-6">
-                    <span>Total</span>
-                    <span>{selectedFormat === "print" ? "$19.99" : selectedFormat === "digital" ? "$9.99" : "$0.00"}</span>
-                  </div>
-
-                  <Button
-                    className="w-full h-14 rounded-full text-lg shadow-lg"
-                    size="lg"
-                    disabled={!selectedFormat || isProcessingOrder}
-                    onClick={handleOrder}
-                    style={{
-                      backgroundColor: selectedFormat === "print" ? "hsl(var(--accent))" : "hsl(var(--primary))",
-                      color: selectedFormat === "print" ? "hsl(var(--accent-foreground))" : "hsl(var(--primary-foreground))",
-                    }}
-                  >
-                    {isProcessingOrder ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      `Pay ${selectedFormat === "print" ? "$19.99" : selectedFormat === "digital" ? "$9.99" : ""}`
-                    )}
-                  </Button>
+              {/* Order Summary */}
+              <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+                <div className="flex justify-between mb-2 text-muted-foreground text-sm">
+                  <span>{pageCount} pages · {tierLabel}</span>
+                  <span>{selectedFormat ? price : "$0.00"}</span>
                 </div>
+                <div className="flex justify-between mb-4 text-muted-foreground text-sm">
+                  <span>Shipping</span>
+                  <span>{selectedFormat === "print" ? "Free" : "—"}</span>
+                </div>
+                <div className="flex justify-between pt-4 border-t border-border font-bold text-xl mb-6">
+                  <span>Total</span>
+                  <span>{selectedFormat ? price : "$0.00"}</span>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
+                  <ShieldCheck className="w-4 h-4 text-primary flex-shrink-0" />
+                  100% Satisfaction Guarantee
+                </div>
+
+                <Button
+                  className="w-full h-14 rounded-full text-lg shadow-lg"
+                  size="lg"
+                  disabled={!selectedFormat || isProcessingOrder}
+                  onClick={handleOrder}
+                  style={{
+                    backgroundColor: selectedFormat === "print" ? "hsl(var(--accent))" : "hsl(var(--primary))",
+                    color: selectedFormat === "print" ? "hsl(var(--accent-foreground))" : "hsl(var(--primary-foreground))",
+                  }}
+                >
+                  {isProcessingOrder ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : selectedFormat ? (
+                    `Pay ${price}`
+                  ) : (
+                    "Select a format above"
+                  )}
+                </Button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </div>
 

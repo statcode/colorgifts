@@ -112,8 +112,16 @@ export interface ColoringPage {
   coloringImagePath?: string | null;
   status: ColoringPageStatus;
   sortOrder: number;
+  /** @nullable */
+  caption?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface UpdatePageBody {
+  sortOrder?: number;
+  /** @nullable */
+  caption?: string | null;
 }
 
 export interface Photo {

@@ -16,6 +16,8 @@ export interface ColoringPage {
   coloringImagePath?: string | null;
   status: ColoringPageStatus;
   sortOrder: number;
+  /** @nullable */
+  caption?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

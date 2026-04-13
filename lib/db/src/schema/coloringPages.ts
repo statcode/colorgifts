@@ -10,6 +10,7 @@ export const coloringPagesTable = pgTable("coloring_pages", {
   coloringImagePath: text("coloring_image_path"),
   status: text("status").notNull().default("pending"),
   sortOrder: integer("sort_order").notNull().default(0),
+  caption: text("caption"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

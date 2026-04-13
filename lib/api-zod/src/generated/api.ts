@@ -116,6 +116,7 @@ export const ListBookPagesResponseItem = zod.object({
   coloringImagePath: zod.string().nullish(),
   status: zod.enum(["pending", "generating", "ready", "failed"]),
   sortOrder: zod.number(),
+  caption: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -134,6 +135,31 @@ export const GenerateBookPagesResponse = zod.object({
 });
 
 /**
+ * @summary Update a coloring page (caption, sortOrder)
+ */
+export const UpdatePageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePageBody = zod.object({
+  sortOrder: zod.number().optional(),
+  caption: zod.string().nullish(),
+});
+
+export const UpdatePageResponse = zod.object({
+  id: zod.number(),
+  bookId: zod.number(),
+  photoId: zod.number(),
+  originalImagePath: zod.string(),
+  coloringImagePath: zod.string().nullish(),
+  status: zod.enum(["pending", "generating", "ready", "failed"]),
+  sortOrder: zod.number(),
+  caption: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Get a coloring page by ID
  */
 export const GetPageParams = zod.object({
@@ -148,6 +174,7 @@ export const GetPageResponse = zod.object({
   coloringImagePath: zod.string().nullish(),
   status: zod.enum(["pending", "generating", "ready", "failed"]),
   sortOrder: zod.number(),
+  caption: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -174,6 +201,7 @@ export const RegeneratePageResponse = zod.object({
   coloringImagePath: zod.string().nullish(),
   status: zod.enum(["pending", "generating", "ready", "failed"]),
   sortOrder: zod.number(),
+  caption: zod.string().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

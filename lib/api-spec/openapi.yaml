@@ -175,6 +175,31 @@ paths:
           description: Book not found
 
   /pages/{id}:
+    patch:
+      operationId: updatePage
+      tags: [pages]
+      summary: Update a coloring page (caption, sortOrder)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePageBody"
+      responses:
+        "200":
+          description: Updated page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColoringPage"
+        "404":
+          description: Page not found
     get:
       operationId: getPage
       tags: [pages]
@@ -407,6 +432,8 @@ components:
           enum: [pending, generating, ready, failed]
         sortOrder:
           type: integer
+        caption:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -422,6 +449,14 @@ components:
         - sortOrder
         - createdAt
         - updatedAt
+
+    UpdatePageBody:
+      type: object
+      properties:
+        sortOrder:
+          type: integer
+        caption:
+          type: ["string", "null"]
 
     Photo:
       type: object

@@ -22,3 +22,4 @@ export * from "./requestUploadUrlResponse";
 export * from "./updateBookBody";
 export * from "./updateBookBodyStatus";
 export * from "./updateBookBodyStyle";
+export * from "./updatePageBody";

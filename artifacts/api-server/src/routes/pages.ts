@@ -5,6 +5,8 @@ import {
   GetPageParams,
   DeletePageParams,
   RegeneratePageParams,
+  UpdatePageParams,
+  UpdatePageBody,
 } from "@workspace/api-zod";
 import { generateColoringPage } from "../lib/aiProcessing";
 
@@ -17,6 +19,25 @@ router.get("/pages/:id", async (req, res): Promise<void> => {
     return;
   }
   const [page] = await db.select().from(coloringPagesTable).where(eq(coloringPagesTable.id, params.data.id));
+  if (!page) {
+    res.status(404).json({ error: "Page not found" });
+    return;
+  }
+  res.json(page);
+});
+
+router.patch("/pages/:id", async (req, res): Promise<void> => {
+  const params = UpdatePageParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const parsed = UpdatePageBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [page] = await db.update(coloringPagesTable).set(parsed.data).where(eq(coloringPagesTable.id, params.data.id)).returning();
   if (!page) {
     res.status(404).json({ error: "Page not found" });
     return;

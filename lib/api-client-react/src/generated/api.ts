@@ -27,6 +27,7 @@ import type {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   UpdateBookBody,
+  UpdatePageBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -682,6 +683,93 @@ export const useGenerateBookPages = <
   TContext
 > => {
   return useMutation(getGenerateBookPagesMutationOptions(options));
+};
+
+/**
+ * @summary Update a coloring page (caption, sortOrder)
+ */
+export const getUpdatePageUrl = (id: number) => {
+  return `/api/pages/${id}`;
+};
+
+export const updatePage = async (
+  id: number,
+  updatePageBody: UpdatePageBody,
+  options?: RequestInit,
+): Promise<ColoringPage> => {
+  return customFetch<ColoringPage>(getUpdatePageUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePageBody),
+  });
+};
+
+export const getUpdatePageMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePage>>,
+    TError,
+    { id: number; data: BodyType<UpdatePageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePage>>,
+  TError,
+  { id: number; data: BodyType<UpdatePageBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePage>>,
+    { id: number; data: BodyType<UpdatePageBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePage(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePage>>
+>;
+export type UpdatePageMutationBody = BodyType<UpdatePageBody>;
+export type UpdatePageMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a coloring page (caption, sortOrder)
+ */
+export const useUpdatePage = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePage>>,
+    TError,
+    { id: number; data: BodyType<UpdatePageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePage>>,
+  TError,
+  { id: number; data: BodyType<UpdatePageBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePageMutationOptions(options));
 };
 
 /**
