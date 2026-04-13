@@ -847,15 +847,16 @@ export default function CreateBook() {
             </div>
 
             {/* Source picker card */}
-            <Card className="rounded-[2rem] border-border shadow-sm mb-8 overflow-hidden">
-              <div className="flex min-h-[420px]">
+            <Card className="rounded-[2rem] border-border shadow-sm mb-8 overflow-visible">
+              <div className="flex min-h-[420px] rounded-[2rem] overflow-hidden">
 
                 {/* Left sidebar — source selector */}
-                <div className="w-56 flex-shrink-0 bg-muted/40 border-r border-border flex flex-col py-3">
+                <div className="w-56 flex-shrink-0 bg-muted/40 border-r border-border flex flex-col py-3 overflow-visible relative z-10">
                   {([
                     {
                       id: "device",
                       label: "My Device",
+                      comingSoon: false,
                       icon: (
                         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
                       ),
@@ -863,6 +864,7 @@ export default function CreateBook() {
                     {
                       id: "facebook",
                       label: "Facebook",
+                      comingSoon: false,
                       icon: (
                         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                       ),
@@ -870,6 +872,7 @@ export default function CreateBook() {
                     {
                       id: "dropbox",
                       label: "Dropbox",
+                      comingSoon: true,
                       icon: (
                         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M12 6.036l-6 3.826 6 3.826-6 3.826L0 13.688l6-3.826-6-3.826L6 2.21l6 3.826zM6.032 18.331l6-3.826 6 3.826-6 3.826-6-3.826zm6-4.643l6-3.826-6-3.826 6-3.826 6 3.826-6 3.826z"/></svg>
                       ),
@@ -877,25 +880,38 @@ export default function CreateBook() {
                     {
                       id: "googledrive",
                       label: "Google Drive",
+                      comingSoon: true,
                       icon: (
                         <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor"><path d="M6.28 3l5.72 9.9L6.28 21H1.72L7.44 12 1.72 3h4.56zm5.44 0h4.56l5.72 9H12l-.28-.49zm4.56 18H6.28l2.72-4.5h10.44L22 21h-5.72z" fillRule="evenodd"/></svg>
                       ),
                     },
                   ] as const).map(src => (
-                    <button
-                      key={src.id}
-                      type="button"
-                      onClick={() => setUploadSource(src.id)}
-                      className={cn(
-                        "flex items-center gap-3 px-5 py-3.5 text-left transition-colors text-sm font-medium",
-                        uploadSource === src.id
-                          ? "bg-background text-foreground border-r-2 border-primary shadow-sm"
-                          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                    <div key={src.id} className="relative group/src">
+                      <button
+                        type="button"
+                        disabled={src.comingSoon}
+                        onClick={() => !src.comingSoon && setUploadSource(src.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-5 py-3.5 text-left transition-colors text-sm font-medium",
+                          src.comingSoon
+                            ? "opacity-40 cursor-not-allowed"
+                            : uploadSource === src.id
+                              ? "bg-background text-foreground border-r-2 border-primary shadow-sm"
+                              : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                        )}
+                      >
+                        <span className={!src.comingSoon && uploadSource === src.id ? "text-primary" : ""}>{src.icon}</span>
+                        {src.label}
+                      </button>
+                      {src.comingSoon && (
+                        <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 opacity-0 group-hover/src:opacity-100 transition-opacity duration-150">
+                          <div className="bg-foreground text-background text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                            Coming soon
+                            <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-foreground" />
+                          </div>
+                        </div>
                       )}
-                    >
-                      <span className={uploadSource === src.id ? "text-primary" : ""}>{src.icon}</span>
-                      {src.label}
-                    </button>
+                    </div>
                   ))}
                 </div>
 
