@@ -2,7 +2,7 @@ import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Sparkles, Heart, Wand2, ArrowRight, ImageIcon, Gift } from "lucide-react";
+import { Sparkles, Heart, Wand2, ArrowRight, ImageIcon, Gift, Users, Dog, Baby, Sunset } from "lucide-react";
 import heroImg from "@/assets/hero.png";
 import simpleStyleImg from "@/assets/style-simple.png";
 import cartoonStyleImg from "@/assets/style-cartoon.png";
@@ -12,8 +12,8 @@ export default function Home() {
   return (
     <Layout>
       <SEO 
-        title="Turn Memories into Coloring Books" 
-        description="Upload your favorite photos and transform them into personalized, magical coloring books for kids. The perfect heartfelt gift."
+        title="Turn Memories into Personalized Coloring Books" 
+        description="Upload your favorite photos and transform them into personalized coloring books. The perfect heartfelt gift for anyone — kids, adults, grandparents, pet lovers, and couples."
       />
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-12 pb-24 lg:pt-24 lg:pb-32">
@@ -23,13 +23,13 @@ export default function Home() {
             <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent-foreground font-medium text-sm mb-6 border border-accent/30">
                 <Sparkles className="w-4 h-4" />
-                <span>The most magical gift for kids</span>
+                <span>A gift everyone will treasure</span>
               </div>
               <h1 className="text-5xl lg:text-7xl font-serif font-bold text-foreground leading-[1.1] mb-6">
                 Turn Your Favorite <span className="text-primary italic">Memories</span> Into a Coloring Book.
               </h1>
               <p className="text-lg lg:text-xl text-muted-foreground mb-8 leading-relaxed">
-                Upload photos of your family, pets, and adventures, and watch them transform into beautiful, custom line-art coloring pages. A heartfelt, tangible gift they'll color with joy.
+                Upload photos of family, pets, adventures, or milestones — and watch them become beautiful, personal line-art coloring pages. A meaningful gift for any age, any occasion.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg" className="rounded-full h-14 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
@@ -63,6 +63,29 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Who It's For */}
+      <section className="py-16 border-y border-border bg-muted/30">
+        <div className="container mx-auto px-4 md:px-6">
+          <p className="text-center text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-10">A perfect gift for every chapter of life</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { icon: Baby, label: "Kids & Toddlers", desc: "Color their own adventures" },
+              { icon: Users, label: "Grandparents", desc: "Family memories preserved" },
+              { icon: Dog, label: "Pet Lovers", desc: "Fur babies as coloring art" },
+              { icon: Sunset, label: "Couples & Friends", desc: "Anniversaries & milestones" },
+            ].map((item, i) => (
+              <div key={i} className="flex flex-col items-center text-center p-6 rounded-2xl bg-card border border-border hover:shadow-md transition-shadow">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <item.icon className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="font-bold font-serif text-base mb-1">{item.label}</h3>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* How it Works */}
       <section id="how-it-works" className="py-24 bg-muted/50 border-y border-border">
         <div className="container mx-auto px-4 md:px-6">
@@ -76,21 +99,21 @@ export default function Home() {
               {
                 step: "01",
                 title: "Choose a Style",
-                desc: "Select between Simple, Cartoon, or Detailed line art to perfectly match the age of the little artist.",
+                desc: "Select between Simple, Cartoon, or Detailed line art — whether it's for a toddler with crayons or an adult with colored pencils.",
                 icon: Wand2,
                 color: "bg-primary/10 text-primary border-primary/20"
               },
               {
                 step: "02",
-                title: "Upload Photos",
-                desc: "Drop in photos of grandma, the dog, or that family vacation. The more personal, the better.",
+                title: "Upload Your Photos",
+                desc: "Drop in photos of the grandkids, your dog, a couple's trip, or a milestone moment. The more personal, the more meaningful.",
                 icon: ImageIcon,
                 color: "bg-secondary/20 text-secondary-foreground border-secondary/30"
               },
               {
                 step: "03",
-                title: "Gift the Magic",
-                desc: "Download instantly as a PDF to print at home, or order a beautifully bound physical book.",
+                title: "Give the Gift",
+                desc: "Download instantly as a PDF or order a beautifully printed book shipped to your door. Perfect for any occasion.",
                 icon: Gift,
                 color: "bg-accent/20 text-accent-foreground border-accent/30"
               }
@@ -114,8 +137,8 @@ export default function Home() {
       <section className="py-24">
         <div className="container mx-auto px-4 md:px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-5xl font-serif font-bold mb-4">A style for every age</h2>
-            <p className="text-lg text-muted-foreground">Our AI adapts to create the perfect coloring experience, whether they're 3 or 93.</p>
+            <h2 className="text-3xl md:text-5xl font-serif font-bold mb-4">A style for everyone</h2>
+            <p className="text-lg text-muted-foreground">Our AI adapts to create the perfect coloring experience — from toddlers to adults who love to unwind with colored pencils.</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
@@ -124,7 +147,7 @@ export default function Home() {
                 <img src={simpleStyleImg} alt="Simple Style" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
               </div>
               <h3 className="text-2xl font-bold font-serif mb-2">Simple</h3>
-              <p className="text-muted-foreground">Thick lines and minimal details. Perfect for toddlers and thick crayons.</p>
+              <p className="text-muted-foreground">Thick, bold outlines with minimal detail. Great for young children and anyone who prefers a relaxing, easy coloring experience.</p>
             </div>
             
             <div className="group text-center">
@@ -132,7 +155,7 @@ export default function Home() {
                 <img src={cartoonStyleImg} alt="Cartoon Style" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
               </div>
               <h3 className="text-2xl font-bold font-serif mb-2">Cartoon</h3>
-              <p className="text-muted-foreground">Expressive, bubbly, and fun. The sweet spot for young children.</p>
+              <p className="text-muted-foreground">Expressive, warm, and full of character. Perfect for families, pet portraits, and anyone who wants a touch of whimsy.</p>
             </div>
             
             <div className="group text-center">
@@ -140,8 +163,29 @@ export default function Home() {
                 <img src={detailedStyleImg} alt="Detailed Style" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
               </div>
               <h3 className="text-2xl font-bold font-serif mb-2">Detailed</h3>
-              <p className="text-muted-foreground">Intricate patterns and fine lines. Great for older kids and colored pencils.</p>
+              <p className="text-muted-foreground">Intricate lines and rich texture. Ideal for adults, mindful coloring, and anyone who loves the meditative quality of fine detail.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Occasions */}
+      <section className="py-20 bg-muted/30 border-y border-border">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Meaningful for every occasion</h2>
+            <p className="text-lg text-muted-foreground">ColorGifts is the gift that says you actually put thought into it.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3">
+            {[
+              "Birthdays", "Mother's Day", "Father's Day", "Grandparent's Day",
+              "Anniversaries", "Valentine's Day", "Baby Showers", "Christmas",
+              "Just Because", "Pet Memorials", "Retirement", "Graduation"
+            ].map((occasion) => (
+              <span key={occasion} className="px-5 py-2.5 rounded-full bg-card border border-border text-sm font-medium text-foreground hover:bg-primary/10 hover:border-primary/30 transition-colors cursor-default">
+                {occasion}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -150,9 +194,9 @@ export default function Home() {
       <section className="py-24 bg-primary text-primary-foreground relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
-          <h2 className="text-4xl md:text-6xl font-serif font-bold mb-6">Ready to make them smile?</h2>
+          <h2 className="text-4xl md:text-6xl font-serif font-bold mb-6">A gift they'll never forget.</h2>
           <p className="text-xl opacity-90 max-w-2xl mx-auto mb-10">
-            Start creating your personalized coloring book today. It only takes a few minutes to build a memory that lasts forever.
+            Start creating your personalized coloring book today. A few minutes of your time, a lifetime of memories.
           </p>
           <Button asChild size="lg" className="rounded-full h-16 px-10 text-xl bg-background text-foreground hover:bg-background/90 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
             <Link href="/create">Create Your Book Now</Link>
