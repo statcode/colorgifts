@@ -11,22 +11,55 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { getImageUrl } from "@/lib/image-utils";
 import { Book as BookIcon, Check, ShieldCheck, ArrowLeft, Loader2, FileDown } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { RequireAuth } from "@/components/require-auth";
+import { CoverPreview, COVER_TEMPLATES, type CoverTemplateId } from "@/components/cover-designer";
 
 type OrderStep = "form" | "generating-pdf" | "placing-order" | "confirmed";
 
-function getPriceForPages(n: number) {
-  if (n <= 20) return "$24.95";
-  if (n <= 30) return "$29.95";
-  if (n <= 40) return "$34.95";
-  return "$49.95";
+type PricingTier = {
+  maxPages: number | null;
+  prices: Record<string, number | undefined>;
+};
+
+const DEFAULT_TIERS: PricingTier[] = [
+  { maxPages: 20, prices: { simple: 2495, cartoon: 2495, detailed: 2495 } },
+  { maxPages: 30, prices: { simple: 2995, cartoon: 2995, detailed: 2995 } },
+  { maxPages: 40, prices: { simple: 3495, cartoon: 3495, detailed: 3495 } },
+  { maxPages: null, prices: { simple: 4995, cartoon: 4995, detailed: 4995 } },
+];
+
+function formatCents(cents: number | undefined): string {
+  if (cents === undefined || !Number.isFinite(cents)) return "—";
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function lookupPrice(tiers: PricingTier[], pageCount: number, style: string | undefined): string {
+  const sorted = [...tiers].sort((a, b) => {
+    if (a.maxPages === null) return 1;
+    if (b.maxPages === null) return -1;
+    return a.maxPages - b.maxPages;
+  });
+  const match = sorted.find(t => t.maxPages === null || pageCount <= t.maxPages);
+  if (!match) return "—";
+  const styleKey = style ?? "simple";
+  const cents = match.prices[styleKey] ?? match.prices["simple"];
+  return formatCents(cents);
 }
 
 export default function Checkout() {
+  return (
+    <RequireAuth>
+      <CheckoutContent />
+    </RequireAuth>
+  );
+}
+
+function CheckoutContent() {
   const { id } = useParams<{ id: string }>();
   const bookId = parseInt(id || "0");
   const [, setLocation] = useLocation();
@@ -36,12 +69,23 @@ export default function Checkout() {
   const { data: book, isLoading } = useGetBook(bookId, {
     query: { enabled: !!bookId, queryKey: getGetBookQueryKey(bookId) },
   });
+  const { data: settings } = useQuery<{ pricing: PricingTier[] }>({
+    queryKey: ["public-settings"],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/settings`);
+      if (!res.ok) return { pricing: DEFAULT_TIERS };
+      return res.json();
+    },
+  });
+  const pricing = settings?.pricing ?? DEFAULT_TIERS;
   const generatePdf = useGenerateBookPdf();
   const createLuluOrder = useCreateLuluOrder();
 
   const [orderStep, setOrderStep] = useState<OrderStep>("form");
   const [orderResult, setOrderResult] = useState<LuluOrderResponse | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPreparingPreview, setIsPreparingPreview] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<{ interior: string; cover: string } | null>(null);
   const [shippingLevel, setShippingLevel] = useState<"MAIL" | "GROUND" | "EXPEDITED" | "EXPRESS">("GROUND");
   const [shippingAddress, setShippingAddress] = useState({
     name: "",
@@ -70,7 +114,30 @@ export default function Checkout() {
   }
 
   const pageCount = book.pageCount ?? 0;
-  const price = getPriceForPages(pageCount);
+  const price = lookupPrice(pricing, pageCount, book.style);
+
+  // Tester preview: build the print-ready interior + cover PDFs (the same
+  // files that would be sent to Lulu) and surface direct links so we can
+  // sanity-check each file BEFORE placing a real print order.
+  const handlePreviewDownload = async () => {
+    setIsPreparingPreview(true);
+    try {
+      const result = await generatePdf.mutateAsync({ id: bookId });
+      setPreviewUrls({ interior: result.interiorUrl, cover: result.coverUrl });
+      toast({
+        title: "Print PDFs ready",
+        description: "Interior + cover are now available below. These are exactly what would be sent to Lulu.",
+      });
+    } catch (err) {
+      toast({
+        title: "PDF preview failed",
+        description: (err as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsPreparingPreview(false);
+    }
+  };
 
   const handleOrder = async () => {
     const required = ["name", "street1", "city", "country_code", "postcode", "phone_number", "email"] as const;
@@ -211,15 +278,14 @@ export default function Checkout() {
           <div className="lg:col-span-2 space-y-6">
             <h1 className="text-3xl font-serif font-bold">Your Order</h1>
             <div className="bg-card rounded-3xl border border-border p-6 shadow-sm">
-              <div className="aspect-[4/3] bg-muted rounded-xl mb-6 overflow-hidden border border-border/50">
-                {book.coverImagePath ? (
-                  <img src={getImageUrl(book.coverImagePath)} alt="Cover" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-white">
-                    <span className="font-serif text-2xl font-bold mb-2">{book.title}</span>
-                    <span className="text-sm text-muted-foreground">{book.pageCount} coloring pages</span>
-                  </div>
-                )}
+              <div className="mx-auto mb-6 w-full max-w-[260px] aspect-[3/4] rounded-xl overflow-hidden shadow-md border border-border/50">
+                <CoverPreview
+                  template={COVER_TEMPLATES.find(t => t.id === ((book.coverTemplate as CoverTemplateId) || "classic")) ?? COVER_TEMPLATES[0]}
+                  title={book.title}
+                  subtitle={book.subtitle ?? undefined}
+                  tagline={book.coverTagline ?? undefined}
+                  coverImagePath={book.coverImagePath}
+                />
               </div>
               <h2 className="font-serif text-xl font-bold mb-1">{book.title}</h2>
               <p className="text-sm text-muted-foreground mb-4 capitalize">
@@ -380,6 +446,59 @@ export default function Checkout() {
               >
                 {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : "Place Print Order"}
               </Button>
+            </div>
+
+            <div className="bg-muted/40 rounded-2xl border border-dashed border-border p-5">
+              <div className="flex items-start gap-3">
+                <FileDown className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold mb-1">Tester Mode — Preview Print PDFs</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Generate the print-ready interior + cover PDFs (using the Lulu cover template) and review them locally. <strong>No order is placed</strong> and Lulu is not contacted.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={isPreparingPreview || isProcessing}
+                    onClick={handlePreviewDownload}
+                  >
+                    {isPreparingPreview ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Building PDFs…</>
+                    ) : (
+                      <><FileDown className="w-4 h-4 mr-2" /> {previewUrls ? "Re-generate Test PDFs" : "Generate Test PDFs"}</>
+                    )}
+                  </Button>
+
+                  {previewUrls && (
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <Button
+                        asChild
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="rounded-full"
+                      >
+                        <a href={previewUrls.interior} target="_blank" rel="noopener noreferrer">
+                          <BookIcon className="w-4 h-4 mr-2" /> View Interior PDF
+                        </a>
+                      </Button>
+                      <Button
+                        asChild
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="rounded-full"
+                      >
+                        <a href={previewUrls.cover} target="_blank" rel="noopener noreferrer">
+                          <FileDown className="w-4 h-4 mr-2" /> View Cover PDF
+                        </a>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -2,7 +2,8 @@ import { Layout } from "@/components/layout";
 import { SEO } from "@/components/seo";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Sparkles, Heart, Wand2, ArrowRight, ImageIcon, Gift, Users, Dog, Baby, Sunset, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Sparkles, Heart, Wand2, ArrowRight, ImageIcon, Gift, Users, Dog, Baby, Sunset, ChevronRight, Camera, BookOpen } from "lucide-react";
 import heroStep1 from "@/assets/hero-step1-photos.png";
 import heroStep2 from "@/assets/hero-step2-coloring.png";
 import heroStep3 from "@/assets/hero-step3-book.png";
@@ -10,7 +11,39 @@ import simpleStyleImg from "@/assets/style-simple.png";
 import cartoonStyleImg from "@/assets/style-cartoon.png";
 import detailedStyleImg from "@/assets/style-detailed.png";
 
+const STYLE_CARDS = [
+  {
+    id: "simple",
+    name: "Simple",
+    img: simpleStyleImg,
+    desc: "Thick, bold outlines with minimal detail. Great for young children and anyone who prefers a relaxing, easy coloring experience.",
+  },
+  {
+    id: "cartoon",
+    name: "Cartoon",
+    img: cartoonStyleImg,
+    desc: "Expressive, warm, and full of character. Perfect for families, pet portraits, and anyone who wants a touch of whimsy.",
+  },
+  {
+    id: "detailed",
+    name: "Detailed",
+    img: detailedStyleImg,
+    desc: "Intricate lines and rich texture. Ideal for adults, mindful coloring, and anyone who loves the meditative quality of fine detail.",
+  },
+];
+
 export default function Home() {
+  const { data: publicSettings } = useQuery<{ enabledStyles: string[] }>({
+    queryKey: ["public-settings"],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/settings`);
+      if (!res.ok) return { enabledStyles: ["simple", "cartoon"] };
+      return res.json();
+    },
+  });
+  const enabledStyleIds = publicSettings?.enabledStyles ?? ["simple", "cartoon"];
+  const visibleStyles = STYLE_CARDS.filter(s => enabledStyleIds.includes(s.id));
+
   return (
     <Layout>
       <SEO 
@@ -23,16 +56,44 @@ export default function Home() {
         <div className="container mx-auto px-4 md:px-6">
           <div className="grid lg:grid-cols-[45%_55%] gap-12 lg:gap-6 items-center">
             <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-1000">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent-foreground font-medium text-sm mb-6 border border-accent/30">
-                <Sparkles className="w-4 h-4" />
-                <span>A gift everyone will treasure</span>
+              <div className="flex flex-wrap items-center gap-2 mb-6">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent-foreground font-medium text-sm border border-accent/30">
+                  <Sparkles className="w-4 h-4" />
+                  <span>A gift everyone will treasure</span>
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/15 text-primary font-bold text-sm border border-primary/30">
+                  <Camera className="w-4 h-4" />
+                  <span>From 2 to 100 photos — you decide</span>
+                </div>
               </div>
               <h1 className="text-5xl lg:text-7xl font-serif font-bold text-foreground leading-[1.1] mb-6">
                 The photos on your phone <span className="text-primary italic">deserve</span> to be colored in.
               </h1>
-              <p className="text-lg lg:text-xl text-muted-foreground mb-8 leading-relaxed">
-                We take your real-life moments — the lazy Sundays, birthday chaos, snuggle-worthy pets — and turn them into line-art coloring pages, packaged in a beautiful keepsake book. Print it. Ship it. Treasure it forever.
+              <p className="text-lg lg:text-xl text-muted-foreground mb-6 leading-relaxed">
+                We take your real-life moments — anywhere from <strong className="text-foreground">just 2 photos</strong> for a quick keepsake to <strong className="text-foreground">a full 100-photo</strong> family chronicle — and turn them into line-art coloring pages, packaged in a beautiful keepsake book. Print it. Ship it. Treasure it forever.
               </p>
+
+              {/* Photo-range emphasis strip */}
+              <div className="mb-8 rounded-2xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-primary text-primary-foreground shadow-md flex-shrink-0">
+                      <span className="text-xl font-serif font-bold leading-none">2</span>
+                      <span className="text-[9px] font-semibold uppercase tracking-wider opacity-90 mt-0.5">min</span>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-primary/60" />
+                    <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-primary text-primary-foreground shadow-md flex-shrink-0">
+                      <span className="text-xl font-serif font-bold leading-none">100</span>
+                      <span className="text-[9px] font-semibold uppercase tracking-wider opacity-90 mt-0.5">max</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <p className="font-bold text-foreground text-base leading-tight">As few as <span className="text-primary">2 photos</span> or as many as <span className="text-primary">100</span>.</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">Big celebration or small moment — your book, your size.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button asChild size="lg" className="rounded-full h-14 px-8 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
                   <Link href="/create-book">
@@ -135,6 +196,58 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Photo-range highlight */}
+      <section className="py-20 bg-background">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="max-w-5xl mx-auto rounded-[3rem] border-2 border-primary/20 bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 p-10 md:p-16 text-center relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-48 h-48 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
+
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary text-primary-foreground font-bold text-sm mb-6 shadow-md">
+                <Camera className="w-4 h-4" />
+                <span>UNMATCHED FLEXIBILITY</span>
+              </div>
+
+              <h2 className="text-4xl md:text-6xl font-serif font-bold mb-6 leading-tight">
+                From <span className="text-primary">2 photos</span> to <span className="text-primary">100 photos</span>.<br className="hidden md:block" />
+                <span className="text-foreground/80">Your story, your size.</span>
+              </h2>
+
+              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-10 leading-relaxed">
+                Whether you've got a single afternoon worth of memories or a full year of moments, we've got you. <strong className="text-foreground">Start with as little as 2 photos. Go all the way up to 100.</strong> No pressure, no minimums beyond two — just the perfect-sized book for the story you want to tell.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto mb-10">
+                <div className="rounded-2xl bg-card border border-border p-5 shadow-sm">
+                  <div className="text-4xl font-serif font-bold text-primary mb-1">2+</div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Minimum photos</p>
+                  <p className="text-xs text-muted-foreground">Tiny keepsake, big heart</p>
+                </div>
+                <div className="rounded-2xl bg-card border border-border p-5 shadow-sm">
+                  <div className="text-4xl font-serif font-bold text-primary mb-1">100</div>
+                  <p className="text-sm font-semibold text-foreground mb-1">Maximum photos</p>
+                  <p className="text-xs text-muted-foreground">A full chronicle of memories</p>
+                </div>
+                <div className="rounded-2xl bg-card border border-border p-5 shadow-sm">
+                  <div className="flex justify-center mb-1">
+                    <BookOpen className="w-9 h-9 text-primary" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground mb-1">One beautiful book</p>
+                  <p className="text-xs text-muted-foreground">Perfectly sized to your story</p>
+                </div>
+              </div>
+
+              <Button asChild size="lg" className="rounded-full h-14 px-10 text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                <Link href="/create-book">
+                  Start with Your Photos <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* How it Works */}
       <section id="how-it-works" className="py-24 bg-muted/50 border-y border-border">
         <div className="container mx-auto px-4 md:px-6">
@@ -148,14 +261,14 @@ export default function Home() {
               {
                 step: "01",
                 title: "Choose a Style",
-                desc: "Select between Simple, Cartoon, or Detailed line art — whether it's for a toddler with crayons or an adult with colored pencils.",
+                desc: `Select between ${visibleStyles.map(s => s.name).join(visibleStyles.length === 2 ? " or " : ", ").replace(/, ([^,]+)$/, visibleStyles.length > 2 ? ", or $1" : "$1")} line art — whether it's for a toddler with crayons or an adult with colored pencils.`,
                 icon: Wand2,
                 color: "bg-primary/10 text-primary border-primary/20"
               },
               {
                 step: "02",
-                title: "Upload Your Photos",
-                desc: "Drop in photos of the grandkids, your dog, a couple's trip, or a milestone moment. The more personal, the more meaningful.",
+                title: "Upload 2 to 100 Photos",
+                desc: "As few as 2 photos for a tiny keepsake, or up to 100 for a sprawling family chronicle. Drop in the grandkids, your dog, a couple's trip, or every milestone of the year. Your book, your size.",
                 icon: ImageIcon,
                 color: "bg-secondary/20 text-secondary-foreground border-secondary/30"
               },
@@ -190,30 +303,16 @@ export default function Home() {
             <p className="text-lg text-muted-foreground">Our AI adapts to create the perfect coloring experience — from toddlers to adults who love to unwind with colored pencils.</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="group text-center">
-              <div className="overflow-hidden rounded-3xl border-4 border-border mb-6 bg-muted">
-                <img src={simpleStyleImg} alt="Simple Style" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
+          <div className={`grid gap-8 ${visibleStyles.length >= 3 ? "md:grid-cols-3" : visibleStyles.length === 2 ? "md:grid-cols-2 max-w-3xl mx-auto" : "max-w-md mx-auto"}`}>
+            {visibleStyles.map(style => (
+              <div key={style.id} className="group text-center">
+                <div className="overflow-hidden rounded-3xl border-4 border-border mb-6 bg-muted">
+                  <img src={style.img} alt={`${style.name} Style`} className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
+                </div>
+                <h3 className="text-2xl font-bold font-serif mb-2">{style.name}</h3>
+                <p className="text-muted-foreground">{style.desc}</p>
               </div>
-              <h3 className="text-2xl font-bold font-serif mb-2">Simple</h3>
-              <p className="text-muted-foreground">Thick, bold outlines with minimal detail. Great for young children and anyone who prefers a relaxing, easy coloring experience.</p>
-            </div>
-            
-            <div className="group text-center">
-              <div className="overflow-hidden rounded-3xl border-4 border-border mb-6 bg-muted">
-                <img src={cartoonStyleImg} alt="Cartoon Style" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
-              </div>
-              <h3 className="text-2xl font-bold font-serif mb-2">Cartoon</h3>
-              <p className="text-muted-foreground">Expressive, warm, and full of character. Perfect for families, pet portraits, and anyone who wants a touch of whimsy.</p>
-            </div>
-            
-            <div className="group text-center">
-              <div className="overflow-hidden rounded-3xl border-4 border-border mb-6 bg-muted">
-                <img src={detailedStyleImg} alt="Detailed Style" className="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105" />
-              </div>
-              <h3 className="text-2xl font-bold font-serif mb-2">Detailed</h3>
-              <p className="text-muted-foreground">Intricate lines and rich texture. Ideal for adults, mindful coloring, and anyone who loves the meditative quality of fine detail.</p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
@@ -244,8 +343,12 @@ export default function Home() {
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <h2 className="text-4xl md:text-6xl font-serif font-bold mb-6">A gift they'll never forget.</h2>
-          <p className="text-xl opacity-90 max-w-2xl mx-auto mb-10">
+          <p className="text-xl opacity-90 max-w-2xl mx-auto mb-4">
             Start creating your personalized coloring book today. A few minutes of your time, a lifetime of memories.
+          </p>
+          <p className="text-base font-semibold opacity-95 max-w-2xl mx-auto mb-10 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/15 border border-background/30">
+            <Camera className="w-4 h-4" />
+            Works with as few as 2 photos — or as many as 100.
           </p>
           <Button asChild size="lg" className="rounded-full h-16 px-10 text-xl bg-background text-foreground hover:bg-background/90 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1">
             <Link href="/create-book">Create Your Book Now</Link>

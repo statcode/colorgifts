@@ -6,6 +6,7 @@ import pagesRouter from "./pages";
 import photosRouter from "./photos";
 import luluRouter from "./lulu";
 import adminRouter from "./admin";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(pagesRouter);
 router.use(photosRouter);
 router.use(luluRouter);
 router.use(adminRouter);
+router.use(settingsRouter);
 
 export default router;

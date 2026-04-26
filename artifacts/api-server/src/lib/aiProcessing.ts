@@ -1,13 +1,11 @@
-import OpenAI, { toFile } from "openai";
-import { ObjectStorageService } from "./objectStorage";
+import { readLocalUploadWithMeta, saveLocalUploadBuffer } from "./localObjectStorage";
 import { logger } from "./logger";
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
-});
-
-const storage = new ObjectStorageService();
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY ?? "";
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+// Override via env (e.g. `google/gemini-2.5-flash-image-preview:free` or a paid
+// image-capable model — see https://openrouter.ai/models?modalities=image).
+const MODEL = process.env.OPENROUTER_IMAGE_MODEL ?? "google/gemini-2.5-flash-image";
 
 function getStylePrompt(style: string): string {
   const prompts: Record<string, string> = {
@@ -18,61 +16,94 @@ function getStylePrompt(style: string): string {
   return prompts[style] ?? prompts.simple;
 }
 
+interface ImageResult {
+  mimeType: string;
+  base64: string;
+}
+
+async function editImageViaOpenRouter(
+  prompt: string,
+  imageBase64: string,
+  imageMime: string,
+): Promise<ImageResult> {
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      modalities: ["image", "text"],
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: `data:${imageMime};base64,${imageBase64}` } },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`OpenRouter ${response.status}: ${body}`);
+  }
+
+  const json = (await response.json()) as {
+    choices?: { message?: { content?: string; images?: { image_url?: { url?: string } }[] } }[];
+  };
+  const message = json.choices?.[0]?.message;
+  const imageUrl = message?.images?.[0]?.image_url?.url;
+
+  if (typeof imageUrl !== "string" || !imageUrl.startsWith("data:")) {
+    // Model returned a text refusal instead of an image — surface it.
+    const text = typeof message?.content === "string" ? message.content : undefined;
+    throw new Error(
+      text
+        ? `OpenRouter returned no image. Model said: ${text}`
+        : "OpenRouter returned no image data",
+    );
+  }
+
+  const match = /^data:([^;]+);base64,(.+)$/.exec(imageUrl);
+  if (!match) throw new Error("OpenRouter returned malformed image data URL");
+  return { mimeType: match[1], base64: match[2] };
+}
+
 export async function generateColoringPage(
   originalObjectPath: string,
-  style: string
+  style: string,
 ): Promise<string> {
   const prompt = getStylePrompt(style);
 
-  logger.info({ originalObjectPath, style }, "Starting coloring page generation");
+  logger.info({ originalObjectPath, style, model: MODEL }, "Starting coloring page generation");
 
   let imageBuffer: Buffer;
+  let contentType: string;
 
   if (originalObjectPath.startsWith("http")) {
     const fetchResponse = await fetch(originalObjectPath);
     if (!fetchResponse.ok) throw new Error(`Failed to fetch image: ${fetchResponse.statusText}`);
     imageBuffer = Buffer.from(await fetchResponse.arrayBuffer());
+    contentType = fetchResponse.headers.get("content-type") ?? "image/jpeg";
   } else {
     const cleanPath = originalObjectPath.startsWith("/objects/")
       ? originalObjectPath
       : `/objects/${originalObjectPath}`;
-
-    const file = await storage.getObjectEntityFile(cleanPath);
-    const [fileContents] = await file.download();
-    imageBuffer = fileContents;
+    ({ buffer: imageBuffer, contentType } = await readLocalUploadWithMeta(cleanPath));
   }
 
-  const imageFile = await toFile(imageBuffer, "photo.png", { type: "image/png" });
-
-  const response = await openai.images.edit({
-    model: "gpt-image-1",
-    image: imageFile,
+  const { mimeType, base64 } = await editImageViaOpenRouter(
     prompt,
-    size: "1024x1024",
-  });
+    imageBuffer.toString("base64"),
+    contentType,
+  );
 
-  const imageData = response.data?.[0];
-  if (!imageData?.b64_json) {
-    throw new Error("No image data returned from AI");
-  }
-
-  const resultBuffer = Buffer.from(imageData.b64_json, "base64");
-
-  const uploadUrl = await storage.getObjectEntityUploadURL();
-
-  const uploadResponse = await fetch(uploadUrl, {
-    method: "PUT",
-    body: resultBuffer,
-    headers: {
-      "Content-Type": "image/png",
-    },
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Failed to upload coloring page: ${uploadResponse.statusText}`);
-  }
-
-  const objectPath = storage.normalizeObjectEntityPath(uploadUrl);
+  const resultBuffer = Buffer.from(base64, "base64");
+  const objectPath = await saveLocalUploadBuffer(resultBuffer, mimeType);
   logger.info({ objectPath }, "Coloring page generated and stored");
 
   return objectPath;

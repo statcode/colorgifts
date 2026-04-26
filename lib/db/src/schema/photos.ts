@@ -1,13 +1,14 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { mysqlTable, int, text, datetime } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const photosTable = pgTable("photos", {
-  id: serial("id").primaryKey(),
-  bookId: integer("book_id").notNull(),
+export const photosTable = mysqlTable("photos", {
+  id: int("id").autoincrement().primaryKey(),
+  bookId: int("book_id").notNull(),
   objectPath: text("object_path").notNull(),
-  fileName: text("file_name").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  fileName: text("file_name"),
+  createdAt: datetime("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const insertPhotoSchema = createInsertSchema(photosTable).omit({ id: true, createdAt: true });

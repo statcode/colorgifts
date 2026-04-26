@@ -2,6 +2,15 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { db, booksTable, coloringPagesTable, photosTable } from "@workspace/db";
 import { eq, count, desc, isNotNull } from "drizzle-orm";
 import { createHmac } from "crypto";
+import {
+  ALL_STYLES,
+  loadPublicSettings,
+  saveEnabledStyles,
+  savePricing,
+  type PricingTier,
+  type StyleId,
+} from "../lib/settings";
+import { cascadeDeleteBook, deletePageWithFile } from "../lib/bookCleanup";
 
 const router: IRouter = Router();
 
@@ -95,17 +104,17 @@ router.patch("/admin/books/:id", requireAdmin, async (req: Request, res: Respons
     if (key in req.body) update[key] = req.body[key];
   }
   if (!Object.keys(update).length) { res.status(400).json({ error: "Nothing to update" }); return; }
-  const [book] = await db.update(booksTable).set(update as any).where(eq(booksTable.id, id)).returning();
-  if (!book) { res.status(404).json({ error: "Not found" }); return; }
+  const [existing] = await db.select().from(booksTable).where(eq(booksTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+  await db.update(booksTable).set(update as any).where(eq(booksTable.id, id));
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, id));
   res.json(book);
 });
 
 router.delete("/admin/books/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  await db.delete(coloringPagesTable).where(eq(coloringPagesTable.bookId, id));
-  await db.delete(photosTable).where(eq(photosTable.bookId, id));
-  await db.delete(booksTable).where(eq(booksTable.id, id));
+  await cascadeDeleteBook(id, req.log);
   res.json({ success: true });
 });
 
@@ -123,15 +132,17 @@ router.patch("/admin/pages/:id", requireAdmin, async (req: Request, res: Respons
     if (key in req.body) update[key] = req.body[key];
   }
   if (!Object.keys(update).length) { res.status(400).json({ error: "Nothing to update" }); return; }
-  const [page] = await db.update(coloringPagesTable).set(update as any).where(eq(coloringPagesTable.id, id)).returning();
-  if (!page) { res.status(404).json({ error: "Not found" }); return; }
+  const [existing] = await db.select().from(coloringPagesTable).where(eq(coloringPagesTable.id, id));
+  if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+  await db.update(coloringPagesTable).set(update as any).where(eq(coloringPagesTable.id, id));
+  const [page] = await db.select().from(coloringPagesTable).where(eq(coloringPagesTable.id, id));
   res.json(page);
 });
 
 router.delete("/admin/pages/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  await db.delete(coloringPagesTable).where(eq(coloringPagesTable.id, id));
+  await deletePageWithFile(id, req.log);
   res.json({ success: true });
 });
 
@@ -174,6 +185,35 @@ router.delete("/admin/users/:id", requireAdmin, async (req: Request, res: Respon
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+router.get("/admin/settings", requireAdmin, async (_req: Request, res: Response): Promise<void> => {
+  const settings = await loadPublicSettings();
+  res.json({ ...settings, allStyles: ALL_STYLES });
+});
+
+router.put("/admin/settings", requireAdmin, async (req: Request, res: Response): Promise<void> => {
+  const body = req.body as { enabledStyles?: unknown; pricing?: unknown };
+  const updated: { enabledStyles?: StyleId[]; pricing?: PricingTier[] } = {};
+
+  if (body.enabledStyles !== undefined) {
+    if (!Array.isArray(body.enabledStyles)) {
+      res.status(400).json({ error: "enabledStyles must be an array" });
+      return;
+    }
+    updated.enabledStyles = await saveEnabledStyles(body.enabledStyles as StyleId[]);
+  }
+
+  if (body.pricing !== undefined) {
+    if (!Array.isArray(body.pricing)) {
+      res.status(400).json({ error: "pricing must be an array" });
+      return;
+    }
+    updated.pricing = await savePricing(body.pricing as PricingTier[]);
+  }
+
+  const settings = await loadPublicSettings();
+  res.json({ ...settings, allStyles: ALL_STYLES });
 });
 
 export default router;

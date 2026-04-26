@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(corepack enable *)",
+      "Bash(corepack prepare *)",
+      "Bash(pnpm --version)",
+      "Bash(pnpm --filter @workspace/api-server run typecheck)",
+      "Bash(node ./build.mjs)",
+      "Bash(/Applications/MAMP/Library/bin/mysql80/bin/mysql --socket=/Applications/MAMP/tmp/mysql/mysql.sock -uroot -proot -e \"ALTER USER 'colorgifts'@'localhost' IDENTIFIED BY '!Xjohn316X!'; GRANT ALL PRIVILEGES ON colorgifts.* TO 'colorgifts'@'localhost'; FLUSH PRIVILEGES;\")",
+      "Bash(pnpm run *)"
+    ]
+  }
+}

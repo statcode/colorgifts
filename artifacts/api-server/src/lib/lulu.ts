@@ -5,7 +5,55 @@ const LULU_PROD_BASE = "https://api.lulu.com";
 const LULU_AUTH_URL = "https://api.lulu.com/auth/realms/glasstree/protocol/openid-connect/token";
 const LULU_SANDBOX_AUTH_URL = "https://api.sandbox.lulu.com/auth/realms/glasstree/protocol/openid-connect/token";
 
+// pod_package_id dotted format: [Trim].[Ink].[Quality].[Binding].[Paper].[Finish]
+// 0850X1100  -> 8.5" x 11" trim (US Letter)
+// BW         -> black & white interior (line-art coloring pages)
+// STD        -> standard quality
+// PB         -> perfect bound (paperback)
+// 060UW444   -> 60# uncoated white paper
+// MXX        -> matte cover, no special finish
 export const COLORING_BOOK_POD_PACKAGE_ID = "0850X1100.BW.STD.PB.060UW444.MXX";
+
+// Lulu cover template constants (per Lulu cover_template.pdf, 8.5" x 11" trim)
+export const COVER_SPEC = {
+  trimWidthInches: 8.5,
+  trimHeightInches: 11,
+  bleedInches: 0.125,
+  safetyInches: 0.5,
+  barcodeWidthInches: 3.625,
+  barcodeHeightInches: 1.25,
+  pointsPerInch: 72,
+  // Spine text not allowed on books with 80 pages or fewer (Lulu Book Creation Guide, p.13)
+  spineTextMinPages: 81,
+} as const;
+
+// Lulu interior specs (per Lulu Book Creation Guide, US Letter Paperback)
+// Trim: 8.5" x 11", file with bleed: 8.75" x 11.25"
+// 0.5" minimum safety margin on all sides; 0.2" minimum gutter
+export const INTERIOR_SPEC = {
+  trimWidthInches: 8.5,
+  trimHeightInches: 11,
+  bleedInches: 0.125,
+  safetyInches: 0.5,
+  pointsPerInch: 72,
+} as const;
+
+// Paperback spine width formula from Lulu Book Creation Guide (p.13)
+// spine width (inches) = (page count / 444) + 0.06
+export function calculateSpineWidthInches(pageCount: number): number {
+  return pageCount / 444 + 0.06;
+}
+
+// Gutter additions table from the Lulu Book Creation Guide.
+// The minimum inside margin is 0.5" for thin books and grows with page count
+// to keep content out of the perfect-bound gutter.
+export function getInteriorGutterInches(pageCount: number): number {
+  if (pageCount <= 60) return 0.5;
+  if (pageCount <= 150) return 0.625;
+  if (pageCount <= 400) return 1.0;
+  if (pageCount <= 600) return 1.125;
+  return 1.25;
+}
 
 function getLuluBaseUrl(): string {
   return process.env.LULU_SANDBOX === "false" ? LULU_PROD_BASE : LULU_SANDBOX_BASE;
@@ -52,7 +100,7 @@ export async function getLuluAccessToken(): Promise<string> {
     throw new Error(`Lulu authentication failed: ${response.status} ${body}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as { access_token: string; expires_in?: number };
   const expiresIn = (data.expires_in ?? 3600) - 60;
   tokenCache = {
     token: data.access_token,
@@ -161,7 +209,7 @@ export async function createLuluPrintJob(params: CreatePrintJobParams): Promise<
     throw new Error(`Lulu print job creation failed: ${response.status} ${errorBody}`);
   }
 
-  const printJob = await response.json();
+  const printJob = (await response.json()) as PrintJob;
   logger.info({ printJobId: printJob.id }, "Lulu print job created");
   return printJob;
 }
@@ -181,7 +229,7 @@ export async function getLuluPrintJobStatus(printJobId: string): Promise<{ name:
     throw new Error(`Failed to get Lulu print job status: ${response.status} ${errorBody}`);
   }
 
-  return response.json();
+  return (await response.json()) as { name: string; message?: string; changed?: string; lineItemStatuses?: unknown[] };
 }
 
 export async function getLuluPrintJob(printJobId: string): Promise<PrintJob> {
@@ -199,7 +247,7 @@ export async function getLuluPrintJob(printJobId: string): Promise<PrintJob> {
     throw new Error(`Failed to get Lulu print job: ${response.status} ${errorBody}`);
   }
 
-  return response.json();
+  return (await response.json()) as PrintJob;
 }
 
 export interface CoverDimensions {
@@ -235,7 +283,7 @@ export async function getLuluCoverDimensions(pageCount: number): Promise<CoverDi
     throw new Error(`Failed to get Lulu cover dimensions: ${response.status} ${errorBody}`);
   }
 
-  return response.json();
+  return (await response.json()) as CoverDimensions;
 }
 
 export interface CostCalculation {
@@ -289,5 +337,57 @@ export async function calculateLuluCost(
     throw new Error(`Failed to calculate Lulu cost: ${response.status} ${errorBody}`);
   }
 
-  return response.json();
+  return (await response.json()) as CostCalculation;
+}
+
+export interface ShippingOption {
+  id: number;
+  level: ShippingLevel;
+  shipping_buffer: number;
+  postbox_ok: boolean;
+  traceable: boolean;
+  business_only: boolean;
+  home_only: boolean;
+  total_days_min: number;
+  total_days_max: number;
+  transit_time: number;
+  cost_excl_tax: string;
+  currency: string;
+}
+
+export async function getLuluShippingOptions(
+  pageCount: number,
+  countryCode: string,
+  currency = "USD"
+): Promise<ShippingOption[]> {
+  const token = await getLuluAccessToken();
+  const base = getLuluBaseUrl();
+
+  const body = {
+    currency,
+    line_items: [
+      {
+        pod_package_id: COLORING_BOOK_POD_PACKAGE_ID,
+        page_count: pageCount,
+        quantity: 1,
+      },
+    ],
+    shipping_address: { country_code: countryCode },
+  };
+
+  const response = await fetch(`${base}/shipping-options/`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Failed to get Lulu shipping options: ${response.status} ${errorBody}`);
+  }
+
+  return (await response.json()) as ShippingOption[];
 }

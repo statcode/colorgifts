@@ -6,12 +6,18 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   BarChart3, Users, BookOpen, ImageIcon, ShoppingBag,
-  Trash2, Pencil, Check, X, LogOut, RefreshCw, Eye, EyeOff,
+  Trash2, Pencil, Check, X, LogOut, RefreshCw, Eye, EyeOff, Settings as SettingsIcon,
 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "";
 
-type Tab = "overview" | "books" | "images" | "orders" | "users";
+type Tab = "overview" | "books" | "images" | "orders" | "users" | "settings";
+
+const STYLE_DESCRIPTIONS: Record<string, { name: string; desc: string }> = {
+  simple: { name: "Simple", desc: "For toddlers & crayons" },
+  cartoon: { name: "Cartoon", desc: "For kids & markers" },
+  detailed: { name: "Detailed", desc: "For older kids & pencils" },
+};
 
 function useAdminFetch(token: string) {
   return useCallback(
@@ -386,12 +392,202 @@ function UsersTab({ token }: { token: string }) {
   );
 }
 
+type PricingTier = {
+  maxPages: number | null;
+  prices: Record<string, number | undefined>;
+};
+
+function centsToDollars(cents: number | undefined): string {
+  if (cents === undefined || cents === null) return "";
+  return (cents / 100).toFixed(2);
+}
+
+function dollarsToCents(dollars: string): number | undefined {
+  const trimmed = dollars.trim();
+  if (trimmed === "") return undefined;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 0) return undefined;
+  return Math.round(n * 100);
+}
+
+function SettingsTab({ token }: { token: string }) {
+  const apiFetch = useAdminFetch(token);
+  const { toast } = useToast();
+  const [allStyles, setAllStyles] = useState<string[]>([]);
+  const [enabled, setEnabled] = useState<string[]>([]);
+  const [pricing, setPricing] = useState<PricingTier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const s = await apiFetch("/settings");
+      setAllStyles(s.allStyles ?? []);
+      setEnabled(s.enabledStyles ?? []);
+      setPricing(s.pricing ?? []);
+    } finally { setLoading(false); }
+  }, [apiFetch]);
+  useEffect(() => { load(); }, [load]);
+
+  const toggle = (style: string) => {
+    setEnabled(prev => prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]);
+  };
+
+  const updateTier = (idx: number, patch: Partial<PricingTier>) => {
+    setPricing(prev => prev.map((t, i) => i === idx ? { ...t, ...patch, prices: { ...t.prices, ...(patch.prices ?? {}) } } : t));
+  };
+
+  const updateTierPrice = (idx: number, style: string, value: string) => {
+    updateTier(idx, { prices: { [style]: dollarsToCents(value) } });
+  };
+
+  const updateTierMax = (idx: number, value: string) => {
+    const trimmed = value.trim();
+    if (trimmed === "" || trimmed === "∞") {
+      updateTier(idx, { maxPages: null });
+      return;
+    }
+    const n = Number(trimmed);
+    updateTier(idx, { maxPages: Number.isFinite(n) && n > 0 ? Math.floor(n) : null });
+  };
+
+  const addTier = () => {
+    const prices: Record<string, number | undefined> = {};
+    allStyles.forEach(s => { prices[s] = 0; });
+    setPricing(prev => [...prev, { maxPages: null, prices }]);
+  };
+
+  const removeTier = (idx: number) => {
+    setPricing(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const save = async () => {
+    if (enabled.length === 0) {
+      toast({ title: "At least one style must be enabled", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await apiFetch("/settings", {
+        method: "PUT",
+        body: JSON.stringify({ enabledStyles: enabled, pricing }),
+      });
+      setEnabled(result.enabledStyles ?? []);
+      setPricing(result.pricing ?? []);
+      toast({ title: "Settings saved" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  if (loading) return <div className="text-muted-foreground py-12 text-center">Loading settings…</div>;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold">Settings</h2>
+        <p className="text-sm text-muted-foreground mt-1">Control which options end users see when creating a book.</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-border p-6 max-w-2xl">
+        <h3 className="font-semibold mb-1">Coloring Styles</h3>
+        <p className="text-sm text-muted-foreground mb-4">Toggle which styles appear in the "Choose a Style" section on the Book Details step.</p>
+        <div className="space-y-2">
+          {allStyles.map(style => {
+            const info = STYLE_DESCRIPTIONS[style] ?? { name: style, desc: "" };
+            const isOn = enabled.includes(style);
+            return (
+              <label key={style} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-muted/30 cursor-pointer">
+                <input type="checkbox" checked={isOn} onChange={() => toggle(style)} className="w-4 h-4" />
+                <div className="flex-1">
+                  <div className="font-medium capitalize">{info.name}</div>
+                  <div className="text-xs text-muted-foreground">{info.desc}</div>
+                </div>
+                <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", isOn ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600")}>
+                  {isOn ? "Visible" : "Hidden"}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-border p-6">
+        <h3 className="font-semibold mb-1">Pricing</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Set the book price per style at each page-count tier. "Max pages" is the upper bound (inclusive) — leave blank for "and above". Enter dollars (e.g. <code>24.95</code>).
+        </p>
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-2 font-medium">Max pages</th>
+                {allStyles.map(s => (
+                  <th key={s} className="text-left px-4 py-2 font-medium capitalize">{STYLE_DESCRIPTIONS[s]?.name ?? s}</th>
+                ))}
+                <th className="px-4 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {pricing.map((tier, idx) => (
+                <tr key={idx} className="hover:bg-muted/20">
+                  <td className="px-4 py-2">
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      className="h-8 w-24 text-sm"
+                      value={tier.maxPages === null ? "" : String(tier.maxPages)}
+                      placeholder="∞"
+                      onChange={e => updateTierMax(idx, e.target.value)}
+                    />
+                  </td>
+                  {allStyles.map(style => (
+                    <td key={style} className="px-4 py-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground text-xs">$</span>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          className="h-8 w-24 text-sm"
+                          value={centsToDollars(tier.prices[style])}
+                          onChange={e => updateTierPrice(idx, style, e.target.value)}
+                        />
+                      </div>
+                    </td>
+                  ))}
+                  <td className="px-4 py-2">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => removeTier(idx)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {pricing.length === 0 && (
+                <tr><td colSpan={allStyles.length + 2} className="text-center py-6 text-muted-foreground">No tiers — add one below.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="mt-3">
+          <Button variant="outline" size="sm" onClick={addTier} className="rounded-xl">+ Add tier</Button>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Button onClick={save} disabled={saving} className="rounded-xl">{saving ? "Saving…" : "Save changes"}</Button>
+        <Button variant="outline" onClick={load} disabled={saving} className="rounded-xl gap-2"><RefreshCw className="w-3.5 h-3.5" /> Reload</Button>
+      </div>
+    </div>
+  );
+}
+
 const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: "overview", label: "Overview", icon: BarChart3 },
   { id: "books", label: "Books", icon: BookOpen },
   { id: "images", label: "Images", icon: ImageIcon },
   { id: "orders", label: "Orders", icon: ShoppingBag },
   { id: "users", label: "Users", icon: Users },
+  { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export default function AdminPage() {
@@ -515,6 +711,7 @@ export default function AdminPage() {
         {activeTab === "images" && <ImagesTab token={token} />}
         {activeTab === "orders" && <OrdersTab token={token} />}
         {activeTab === "users" && <UsersTab token={token} />}
+        {activeTab === "settings" && <SettingsTab token={token} />}
       </main>
     </div>
   );

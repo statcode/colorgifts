@@ -3,11 +3,20 @@ import { useListBooks, getListBooksQueryKey } from "@workspace/api-client-react"
 import { BookCard } from "@/components/book-card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { PlusCircle, LibraryBig, Loader2 } from "lucide-react";
+import { PlusCircle, LibraryBig, Info } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { RequireAuth } from "@/components/require-auth";
 
 export default function BookGallery() {
+  return (
+    <RequireAuth>
+      <BookGalleryContent />
+    </RequireAuth>
+  );
+}
+
+function BookGalleryContent() {
   const { data: books, isLoading, error } = useListBooks();
   const queryClient = useQueryClient();
 
@@ -39,6 +48,18 @@ export default function BookGallery() {
             </Link>
           </Button>
         </div>
+
+        {books && books.length > 0 && (
+          <div className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/50 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+            <Info className="w-5 h-5 flex-shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="font-semibold">Watermarks are only shown in preview.</p>
+              <p className="text-amber-800/90 dark:text-amber-300/90">
+                The "COLORGIFTS" watermark appears on cover and page previews while you're designing. When you place an order, your printed book will contain the <strong>full, watermark-free coloring pages</strong>.
+              </p>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

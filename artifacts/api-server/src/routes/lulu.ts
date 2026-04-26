@@ -14,13 +14,24 @@ import {
   getLuluPrintJob,
   getLuluCoverDimensions,
   calculateLuluCost,
+  getLuluShippingOptions,
   COLORING_BOOK_POD_PACKAGE_ID,
   type ShippingAddress,
   type ShippingLevel,
 } from "../lib/lulu";
 import { logger } from "../lib/logger";
+import { requireUser } from "../middlewares/requireUser";
 
 const router: IRouter = Router();
+
+router.use(requireUser());
+
+async function loadOwnedBook(bookId: number, userId: string | undefined) {
+  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, bookId));
+  if (!book) return null;
+  if (userId && book.userId !== userId) return null;
+  return book;
+}
 
 function getPublicBaseUrl(): string {
   if (process.env.REPLIT_DEV_DOMAIN) {
@@ -36,7 +47,7 @@ router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
     return;
   }
 
-  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, bookId));
+  const book = await loadOwnedBook(bookId, req.userId);
   if (!book) {
     res.status(404).json({ error: "Book not found" });
     return;
@@ -70,12 +81,22 @@ router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
         book.subtitle,
         readyPages.length,
         coverDimensions,
-        templateId,
-        book.coverTagline
+        {
+          templateId,
+          tagline: book.coverTagline,
+          coverImagePath: book.coverImagePath,
+        }
       );
     } catch (err) {
       logger.warn({ err }, "Failed to get Lulu cover dimensions, using simple cover");
-      coverPdfBuffer = await generateSimpleCoverPdf(book.title, book.subtitle, readyPages.length, templateId, book.coverTagline);
+      coverPdfBuffer = await generateSimpleCoverPdf(
+        book.title,
+        book.subtitle,
+        readyPages.length,
+        templateId,
+        book.coverTagline,
+        book.coverImagePath
+      );
     }
 
     const coverPdfPath = await uploadPdfBuffer(coverPdfBuffer, `${book.title}-cover.pdf`);
@@ -134,7 +155,7 @@ router.post("/books/:id/lulu-order", async (req, res): Promise<void> => {
     return;
   }
 
-  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, bookId));
+  const book = await loadOwnedBook(bookId, req.userId);
   if (!book) {
     res.status(404).json({ error: "Book not found" });
     return;
@@ -200,7 +221,7 @@ router.get("/books/:id/lulu-status", async (req, res): Promise<void> => {
     return;
   }
 
-  const [book] = await db.select().from(booksTable).where(eq(booksTable.id, bookId));
+  const book = await loadOwnedBook(bookId, req.userId);
   if (!book) {
     res.status(404).json({ error: "Book not found" });
     return;
@@ -231,6 +252,54 @@ router.get("/books/:id/lulu-status", async (req, res): Promise<void> => {
   }
 });
 
+// Returns Lulu's available shipping options + per-option pricing for a given
+// destination country and a book's current page count. Use this on checkout to
+// let the buyer pick a shipping level before placing the print order.
+router.post("/books/:id/shipping-options", async (req, res): Promise<void> => {
+  const bookId = parseInt(req.params.id, 10);
+  if (isNaN(bookId)) {
+    res.status(400).json({ error: "Invalid book ID" });
+    return;
+  }
+
+  const parsed = z
+    .object({
+      countryCode: z.string().length(2),
+      currency: z.string().length(3).optional(),
+    })
+    .safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const book = await loadOwnedBook(bookId, req.userId);
+  if (!book) {
+    res.status(404).json({ error: "Book not found" });
+    return;
+  }
+
+  const pages = await db
+    .select()
+    .from(coloringPagesTable)
+    .where(eq(coloringPagesTable.bookId, bookId));
+
+  const pageCount = pages.filter((p) => p.status === "ready").length;
+  if (pageCount === 0) {
+    res.status(400).json({ error: "No ready pages found" });
+    return;
+  }
+
+  try {
+    const options = await getLuluShippingOptions(pageCount, parsed.data.countryCode, parsed.data.currency);
+    res.json({ options });
+  } catch (err) {
+    logger.error({ err, bookId }, "Failed to get Lulu shipping options");
+    res.status(500).json({ error: `Failed to get shipping options: ${(err as Error).message}` });
+  }
+});
+
 router.post("/books/:id/lulu-cost", async (req, res): Promise<void> => {
   const bookId = parseInt(req.params.id, 10);
   if (isNaN(bookId)) {
@@ -247,6 +316,12 @@ router.post("/books/:id/lulu-cost", async (req, res): Promise<void> => {
 
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const book = await loadOwnedBook(bookId, req.userId);
+  if (!book) {
+    res.status(404).json({ error: "Book not found" });
     return;
   }
 

@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth, SignUp, SignIn } from "@clerk/react";
+import { useAuth as useClerkAuth, SignUp, SignIn } from "@clerk/react";
 import { 
   useCreateBook, 
   useRequestUploadUrl, 
@@ -27,7 +27,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, UploadCloud, X, Wand2, ImageIcon, Sparkles, FileDown, Book as BookIcon, Check, ShieldCheck, GripVertical, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { getImageUrl } from "@/lib/image-utils";
 import {
@@ -51,160 +51,8 @@ import { CSS } from "@dnd-kit/utilities";
 import simpleStyleImg from "@/assets/style-simple.png";
 import cartoonStyleImg from "@/assets/style-cartoon.png";
 import detailedStyleImg from "@/assets/style-detailed.png";
+import { CoverDesigner, type CoverTemplateId } from "@/components/cover-designer";
 
-export type CoverTemplateId = "classic" | "sunshine" | "ocean" | "garden" | "starlight" | "rainbow";
-
-interface CoverTemplateConfig {
-  id: CoverTemplateId;
-  name: string;
-  description: string;
-  bg: string;
-  border: string;
-  titleColor: string;
-  subtitleColor: string;
-  taglineColor: string;
-  accentColor: string;
-}
-
-const COVER_TEMPLATES: CoverTemplateConfig[] = [
-  {
-    id: "classic",
-    name: "Classic",
-    description: "Timeless & elegant",
-    bg: "#F9F9F6",
-    border: "#4A4A4A",
-    titleColor: "#141414",
-    subtitleColor: "#555",
-    taglineColor: "#888",
-    accentColor: "#333",
-  },
-  {
-    id: "sunshine",
-    name: "Sunshine",
-    description: "Warm & cheerful",
-    bg: "#FFF8D0",
-    border: "#D4890A",
-    titleColor: "#6B3200",
-    subtitleColor: "#8A5008",
-    taglineColor: "#A06010",
-    accentColor: "#C07010",
-  },
-  {
-    id: "ocean",
-    name: "Ocean",
-    description: "Cool & serene",
-    bg: "#E0F4FF",
-    border: "#2080CC",
-    titleColor: "#053A80",
-    subtitleColor: "#0D5AA0",
-    taglineColor: "#1A70B8",
-    accentColor: "#0D5AA0",
-  },
-  {
-    id: "garden",
-    name: "Garden",
-    description: "Fresh & natural",
-    bg: "#E8FBE8",
-    border: "#3C9A3C",
-    titleColor: "#0F4D0F",
-    subtitleColor: "#1E6B1E",
-    taglineColor: "#2A7A2A",
-    accentColor: "#258025",
-  },
-  {
-    id: "starlight",
-    name: "Starlight",
-    description: "Bold & magical",
-    bg: "#13103D",
-    border: "#9A8FE8",
-    titleColor: "#FFFFFF",
-    subtitleColor: "#D8D4FF",
-    taglineColor: "#B8B2F0",
-    accentColor: "#B0A8FF",
-  },
-  {
-    id: "rainbow",
-    name: "Rainbow",
-    description: "Vibrant & fun",
-    bg: "#FFFFFF",
-    border: "#DD3333",
-    titleColor: "#8B18B0",
-    subtitleColor: "#3030BB",
-    taglineColor: "#198050",
-    accentColor: "#E07800",
-  },
-];
-
-function CoverPreview({
-  template,
-  title,
-  subtitle,
-  tagline,
-  small = false,
-}: {
-  template: CoverTemplateConfig;
-  title: string;
-  subtitle?: string;
-  tagline?: string;
-  small?: boolean;
-}) {
-  const starDots = template.id === "starlight"
-    ? [{ x: 20, y: 15 }, { x: 75, y: 10 }, { x: 60, y: 35 }, { x: 10, y: 50 }, { x: 85, y: 55 }]
-    : [];
-  const rainbowStripes = template.id === "rainbow"
-    ? ["#EF4444", "#F97316", "#EAB308", "#22C55E", "#3B82F6", "#8B5CF6"]
-    : [];
-
-  return (
-    <div
-      className="relative rounded-lg overflow-hidden flex flex-col"
-      style={{
-        background: template.bg,
-        border: `2px solid ${template.border}`,
-        width: small ? 80 : "100%",
-        height: small ? 104 : "100%",
-        minHeight: small ? 104 : 160,
-      }}
-    >
-      {starDots.map((s, i) => (
-        <div key={i} className="absolute rounded-full" style={{ left: `${s.x}%`, top: `${s.y}%`, width: 3, height: 3, background: template.border }} />
-      ))}
-      {rainbowStripes.length > 0 && (
-        <div className="absolute top-0 left-0 right-0 flex" style={{ height: small ? 8 : 12 }}>
-          {rainbowStripes.map((c, i) => (
-            <div key={i} className="flex-1" style={{ background: c }} />
-          ))}
-        </div>
-      )}
-      <div
-        className="absolute inset-1.5 rounded flex flex-col items-center justify-center text-center px-2"
-        style={{ border: `1px solid ${template.border}40` }}
-      >
-        <div
-          className="font-bold leading-tight"
-          style={{
-            color: template.titleColor,
-            fontSize: small ? 8 : 15,
-            fontFamily: "Georgia, serif",
-          }}
-        >
-          {title || "Book Title"}
-        </div>
-        {subtitle && !small && (
-          <div style={{ color: template.subtitleColor, fontSize: 10, marginTop: 3, fontStyle: "italic" }}>
-            {subtitle}
-          </div>
-        )}
-        <div style={{ color: template.taglineColor, fontSize: small ? 5 : 8, marginTop: small ? 3 : 8 }}>
-          {tagline || "A Personalized Coloring Book"}
-        </div>
-        <div style={{ color: template.accentColor, fontSize: small ? 5 : 8, marginTop: small ? 2 : 6, fontWeight: "bold" }}>
-          ColorGifts
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function getPriceForPages(pageCount: number): string {
   if (pageCount <= 20) return "$24.95";
@@ -223,10 +71,14 @@ function getPriceTierLabel(pageCount: number): string {
 function SortablePageRow({
   page,
   index,
+  isOnCover,
+  onToggleCover,
   onCaptionChange,
 }: {
   page: ColoringPage & { caption: string };
   index: number;
+  isOnCover: boolean;
+  onToggleCover: (page: ColoringPage & { caption: string }) => void;
   onCaptionChange: (id: number, caption: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: page.id });
@@ -253,7 +105,7 @@ function SortablePageRow({
 
       <div className="w-14 h-14 rounded-xl overflow-hidden bg-muted border border-border flex-shrink-0">
         {page.coloringImagePath ? (
-          <img src={getImageUrl(page.coloringImagePath)} alt={`Page ${index + 1}`} className="w-full h-full object-cover" />
+          <img src={`${getImageUrl(page.coloringImagePath)}?watermark=1`} alt={`Page ${index + 1}`} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ImageIcon className="w-5 h-5 text-muted-foreground" />
@@ -273,6 +125,26 @@ function SortablePageRow({
           className="flex-1 text-sm bg-muted/50 rounded-lg px-3 py-1.5 border border-transparent focus:border-ring focus:outline-none min-w-0"
         />
       </div>
+
+      <label
+        className={cn(
+          "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border cursor-pointer transition-colors flex-shrink-0",
+          isOnCover
+            ? "border-primary bg-primary/10 text-primary"
+            : "border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted",
+          !page.coloringImagePath && "opacity-50 cursor-not-allowed"
+        )}
+        title="Use this image as the cover"
+      >
+        <input
+          type="checkbox"
+          className="accent-primary"
+          checked={isOnCover}
+          disabled={!page.coloringImagePath}
+          onChange={() => onToggleCover(page)}
+        />
+        Put on cover
+      </label>
     </div>
   );
 }
@@ -291,7 +163,10 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 export default function CreateBook() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { isSignedIn, isLoaded } = useAuth();
+  const clerkAvailable = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  const clerkAuth = clerkAvailable ? useClerkAuth() : null;
+  const isSignedIn = clerkAvailable ? clerkAuth?.isSignedIn : true;
+  const isLoaded = clerkAvailable ? clerkAuth?.isLoaded : true;
   
   const [step, setStep] = useState(1);
   const [bookId, setBookId] = useState<number | null>(null);
@@ -325,6 +200,12 @@ export default function CreateBook() {
   const [coverTitle, setCoverTitle] = useState("");
   const [coverSubtitle, setCoverSubtitle] = useState("");
   const [coverTagline, setCoverTagline] = useState("");
+  const [coverImagePath, setCoverImagePath] = useState<string | null>(null);
+
+  const handleToggleCover = (page: ColoringPage & { caption: string }) => {
+    if (!page.coloringImagePath) return;
+    setCoverImagePath(prev => prev === page.coloringImagePath ? null : page.coloringImagePath ?? null);
+  };
 
   const createBook = useCreateBook();
   const requestUploadUrl = useRequestUploadUrl();
@@ -375,11 +256,22 @@ export default function CreateBook() {
       if (bookData.subtitle && !coverSubtitle) setCoverSubtitle(bookData.subtitle ?? "");
       if (bookData.coverTagline && !coverTagline) setCoverTagline(bookData.coverTagline ?? "");
       if (bookData.coverTemplate) setCoverTemplate(bookData.coverTemplate as CoverTemplateId);
+      if (bookData.coverImagePath && !coverImagePath) setCoverImagePath(bookData.coverImagePath);
       setGenerationComplete(true);
     }
   }, [bookData?.status, pagesData, step]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: publicSettings } = useQuery<{ enabledStyles: string[] }>({
+    queryKey: ["public-settings"],
+    queryFn: async () => {
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/settings`);
+      if (!res.ok) return { enabledStyles: ["simple", "cartoon"] };
+      return res.json();
+    },
+  });
+  const enabledStyleIds = publicSettings?.enabledStyles ?? ["simple", "cartoon"];
 
   const form = useForm<Step1Values>({
     resolver: zodResolver(step1Schema),
@@ -641,6 +533,7 @@ export default function CreateBook() {
           subtitle: coverSubtitle || null,
           coverTemplate: coverTemplate as any,
           coverTagline: coverTagline || null,
+          coverImagePath: coverImagePath ?? null,
         }
       }),
     ]);
@@ -806,7 +699,7 @@ export default function CreateBook() {
                       { id: BookStyle.simple, name: "Simple", desc: "For toddlers & crayons", img: simpleStyleImg },
                       { id: BookStyle.cartoon, name: "Cartoon", desc: "For kids & markers", img: cartoonStyleImg },
                       { id: BookStyle.detailed, name: "Detailed", desc: "For older kids & pencils", img: detailedStyleImg }
-                    ].map((styleOption) => (
+                    ].filter((styleOption) => enabledStyleIds.includes(styleOption.id)).map((styleOption) => (
                       <div 
                         key={styleOption.id}
                         className={cn(
@@ -843,7 +736,7 @@ export default function CreateBook() {
           <div className="animate-in fade-in slide-in-from-right-8 duration-500">
             <div className="text-center mb-10">
               <h1 className="text-4xl font-serif font-bold mb-3">Add your memories</h1>
-              <p className="text-muted-foreground text-lg">Upload 2–40 photos — each becomes a coloring page. Clear faces and simple backgrounds work best.</p>
+              <p className="text-muted-foreground text-lg">Upload 2 to 100+ photos — each becomes a coloring page. Clear faces and simple backgrounds work best.</p>
             </div>
 
             {/* Source picker card */}
@@ -1134,7 +1027,7 @@ export default function CreateBook() {
                             className="w-12 h-12 rounded-lg overflow-hidden border-2 border-primary/30 animate-in fade-in zoom-in-95 duration-300 bg-muted"
                           >
                             <img
-                              src={getImageUrl(p.coloringImagePath!)}
+                              src={`${getImageUrl(p.coloringImagePath!)}?watermark=1`}
                               alt="Completed page"
                               className="w-full h-full object-cover"
                             />
@@ -1149,96 +1042,19 @@ export default function CreateBook() {
         })()}
 
         {/* Step 3: Generate Pages — Page Editor + Cover Designer phase */}
-        {step === 3 && generationComplete && (() => {
-          const selectedTpl = COVER_TEMPLATES.find(t => t.id === coverTemplate) ?? COVER_TEMPLATES[0];
-          return (
+        {step === 3 && generationComplete && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-10">
-              {/* ── Cover Designer ── */}
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <BookIcon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-serif font-bold">Design Your Cover</h2>
-                    <p className="text-sm text-muted-foreground">Choose a template and personalise the text.</p>
-                  </div>
-                </div>
-
-                <div className="grid lg:grid-cols-3 gap-6">
-                  {/* Left: template picker */}
-                  <div className="lg:col-span-2 space-y-4">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Choose a Template</h3>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-                      {COVER_TEMPLATES.map((tpl) => (
-                        <button
-                          key={tpl.id}
-                          onClick={() => setCoverTemplate(tpl.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-2 rounded-2xl p-2 border-2 transition-all duration-200",
-                            coverTemplate === tpl.id
-                              ? "border-primary shadow-md scale-105"
-                              : "border-transparent hover:border-border"
-                          )}
-                        >
-                          <div style={{ width: 80, height: 104 }}>
-                            <CoverPreview template={tpl} title={coverTitle || "Title"} subtitle={coverSubtitle} tagline={coverTagline} small />
-                          </div>
-                          <span className="text-xs font-medium">{tpl.name}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Text fields */}
-                    <div className="space-y-4 mt-4">
-                      <div>
-                        <label className="text-sm font-semibold text-foreground block mb-1.5">Cover Title</label>
-                        <Input
-                          value={coverTitle}
-                          onChange={e => setCoverTitle(e.target.value)}
-                          placeholder="e.g. Adventures of Tommy & Rex"
-                          className="h-11 bg-muted/50 border-transparent focus-visible:bg-background rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-semibold text-foreground block mb-1.5">Subtitle <span className="text-muted-foreground font-normal">(optional)</span></label>
-                        <Input
-                          value={coverSubtitle}
-                          onChange={e => setCoverSubtitle(e.target.value)}
-                          placeholder="e.g. Summer 2024"
-                          className="h-11 bg-muted/50 border-transparent focus-visible:bg-background rounded-xl"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-semibold text-foreground block mb-1.5">Tagline <span className="text-muted-foreground font-normal">(optional)</span></label>
-                        <Input
-                          value={coverTagline}
-                          onChange={e => setCoverTagline(e.target.value)}
-                          placeholder="e.g. Made with Love · A Family Coloring Book"
-                          className="h-11 bg-muted/50 border-transparent focus-visible:bg-background rounded-xl"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">Shown below the title on the cover. Defaults to "A Personalized Coloring Book".</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: live preview */}
-                  <div className="flex flex-col items-center gap-3">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground self-start">Live Preview</h3>
-                    <div className="w-full max-w-[220px] aspect-[3/4] rounded-2xl overflow-hidden shadow-xl border border-border/50">
-                      <CoverPreview
-                        template={selectedTpl}
-                        title={coverTitle || "Book Title"}
-                        subtitle={coverSubtitle}
-                        tagline={coverTagline}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center">
-                      {selectedTpl.name} — {selectedTpl.description}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <CoverDesigner
+                template={coverTemplate}
+                onTemplateChange={setCoverTemplate}
+                title={coverTitle}
+                onTitleChange={setCoverTitle}
+                subtitle={coverSubtitle}
+                onSubtitleChange={setCoverSubtitle}
+                tagline={coverTagline}
+                onTaglineChange={setCoverTagline}
+                coverImagePath={coverImagePath}
+              />
 
               {/* Divider */}
               <div className="border-t border-border" />
@@ -1263,6 +1079,8 @@ export default function CreateBook() {
                           key={page.id}
                           page={page}
                           index={idx}
+                          isOnCover={!!coverImagePath && coverImagePath === page.coloringImagePath}
+                          onToggleCover={handleToggleCover}
                           onCaptionChange={handleCaptionChange}
                         />
                       ))}
@@ -1286,8 +1104,7 @@ export default function CreateBook() {
                 </Button>
               </div>
             </div>
-          );
-        })()}
+        )}
 
         {/* Step 4: Order Book */}
         {step === 4 && (() => {

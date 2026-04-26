@@ -13,13 +13,96 @@ import {
 } from "./ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+const clerkAvailable = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+function AuthNav() {
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+
+  if (!isSignedIn) {
+    return (
+      <div className="flex items-center gap-4">
+        <Link
+          href="/sign-in"
+          className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
+        >
+          Log in
+        </Link>
+        <Button asChild className="rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
+          <Link href="/create-book">Start Gifting</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors">
+          {user?.imageUrl ? (
+            <img src={user.imageUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+              <User className="w-3.5 h-3.5 text-primary" />
+            </div>
+          )}
+          <span className="max-w-[120px] truncate">{user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "Account"}</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52 rounded-2xl">
+        <DropdownMenuLabel className="font-serif">My Account</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/books" className="cursor-pointer">My Gallery</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/create-book" className="cursor-pointer">Create a Book</Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive cursor-pointer"
+          onClick={() => signOut({ redirectUrl: "/" })}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+type NavLink = { href: string; label: string };
+
+function buildNavLinks(isSignedIn: boolean): NavLink[] {
+  const links: NavLink[] = [{ href: "/create-book", label: "Create a Book" }];
+  if (isSignedIn) links.push({ href: "/books", label: "My Gallery" });
+  return links;
+}
+
+function ClerkNavLinks({ render }: { render: (links: NavLink[]) => React.ReactNode }) {
+  const { isSignedIn } = useAuth();
+  return <>{render(buildNavLinks(!!isSignedIn))}</>;
+}
+
+function MobileAuthLinks({ onClose }: { onClose: () => void }) {
+  const { isSignedIn } = useAuth();
+  if (isSignedIn) return null;
+  return (
+    <Link
+      href="/sign-in"
+      onClick={onClose}
+      className="text-2xl font-serif font-medium text-foreground"
+    >
+      Log in
+    </Link>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isSignedIn } = useAuth();
-  const { user } = useUser();
-  const { signOut } = useClerk();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,10 +112,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navLinks = [
-    { href: "/create-book", label: "Create a Book" },
-    { href: "/books", label: "My Gallery" },
-  ];
+  const staticNavLinks = buildNavLinks(!clerkAvailable);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-background text-foreground">
@@ -56,51 +136,41 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "text-sm font-medium transition-colors hover:text-primary",
-                  location === link.href ? "text-primary" : "text-muted-foreground"
+            {clerkAvailable ? (
+              <ClerkNavLinks
+                render={(links) => (
+                  <>
+                    {links.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={cn(
+                          "text-sm font-medium transition-colors hover:text-primary",
+                          location === link.href ? "text-primary" : "text-muted-foreground"
+                        )}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </>
                 )}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isSignedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted transition-colors">
-                    {user?.imageUrl ? (
-                      <img src={user.imageUrl} alt="" className="w-6 h-6 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-3.5 h-3.5 text-primary" />
-                      </div>
-                    )}
-                    <span className="max-w-[120px] truncate">{user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split("@")[0] || "Account"}</span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52 rounded-2xl">
-                  <DropdownMenuLabel className="font-serif">My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/books" className="cursor-pointer">My Gallery</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/create-book" className="cursor-pointer">Create a Book</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                    onClick={() => signOut({ redirectUrl: "/" })}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              />
+            ) : (
+              staticNavLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary",
+                    location === link.href ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))
+            )}
+            {clerkAvailable ? (
+              <AuthNav />
             ) : (
               <Button asChild className="rounded-full px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5">
                 <Link href="/create-book">Start Gifting</Link>
@@ -121,19 +191,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile Nav */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 bg-background pt-24 px-6 flex flex-col gap-6 md:hidden">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={cn(
-                "text-2xl font-serif font-medium",
-                location === link.href ? "text-primary" : "text-foreground"
+          {clerkAvailable ? (
+            <ClerkNavLinks
+              render={(links) => (
+                <>
+                  {links.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "text-2xl font-serif font-medium",
+                        location === link.href ? "text-primary" : "text-foreground"
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </>
               )}
-            >
-              {link.label}
-            </Link>
-          ))}
+            />
+          ) : (
+            staticNavLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={cn(
+                  "text-2xl font-serif font-medium",
+                  location === link.href ? "text-primary" : "text-foreground"
+                )}
+              >
+                {link.label}
+              </Link>
+            ))
+          )}
+          {clerkAvailable && <MobileAuthLinks onClose={() => setIsMobileMenuOpen(false)} />}
           <Button asChild size="lg" className="mt-4 rounded-full w-full bg-primary">
             <Link href="/create-book" onClick={() => setIsMobileMenuOpen(false)}>Start Gifting</Link>
           </Button>

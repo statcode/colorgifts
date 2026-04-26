@@ -11,7 +11,8 @@ interface BookCardProps {
 }
 
 export function BookCard({ book }: BookCardProps) {
-  const coverUrl = getImageUrl(book.coverImagePath);
+  const baseCoverUrl = getImageUrl(book.coverImagePath);
+  const coverUrl = baseCoverUrl ? `${baseCoverUrl}?watermark=1` : null;
 
   return (
     <Link href={`/books/${book.id}`}>
