@@ -563,7 +563,7 @@ function BookDetailContent() {
           <div>
             <p className="font-semibold">Watermarks are only shown in preview.</p>
             <p className="text-amber-800/90 dark:text-amber-300/90">
-              The "COLORGIFTS" watermark on cover and page previews protects your artwork while you're designing. It will <strong>not</strong> appear on the printed copy of your book when you place an order.
+              The "COLORGIFTS" watermark appears on cover and page previews while you're designing. When you place an order, your printed book will contain the <strong>full, watermark-free coloring pages</strong>.
             </p>
           </div>
         </div>
