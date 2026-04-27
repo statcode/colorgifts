@@ -40,11 +40,12 @@ function getPublicBaseUrl(req: Request): string {
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
-  // Behind Apache/NGINX, ProxyPreserveHost passes the original Host. If a
-  // proxy strips it instead, fall back to X-Forwarded-Host (req.hostname reads
-  // it when trust proxy is set in app.ts).
-  const forwardedHost = req.get("x-forwarded-host");
-  const host = forwardedHost || req.get("host");
+  // Behind Apache/NGINX the original public host comes via X-Forwarded-Host.
+  // It can be a comma-separated list (NGINX in front of Apache may both set
+  // it) — first value is the client-visible host. Fall back to the raw Host
+  // header for non-proxied requests (e.g. local dev).
+  const xfh = req.get("x-forwarded-host");
+  const host = xfh ? xfh.split(",")[0].trim() : req.get("host");
   return `${req.protocol}://${host}`;
 }
 
