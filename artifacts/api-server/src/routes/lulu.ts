@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { eq, asc } from "drizzle-orm";
 import { z } from "zod";
 import { db, booksTable, coloringPagesTable } from "@workspace/db";
@@ -33,11 +33,16 @@ async function loadOwnedBook(bookId: number, userId: string | undefined) {
   return book;
 }
 
-function getPublicBaseUrl(): string {
+function getPublicBaseUrl(req: Request): string {
+  if (process.env.PUBLIC_BASE_URL) {
+    return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
+  }
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
-  return `http://localhost:${process.env.PORT ?? 8080}`;
+  // Behind Apache/NGINX proxy these read X-Forwarded-Proto / X-Forwarded-Host
+  // because app.ts sets `trust proxy`. Locally they're the dev host directly.
+  return `${req.protocol}://${req.get("host")}`;
 }
 
 router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
@@ -106,7 +111,7 @@ router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
       .set({ pdfPath, coverPdfPath })
       .where(eq(booksTable.id, bookId));
 
-    const base = getPublicBaseUrl();
+    const base = getPublicBaseUrl(req);
     const interiorUrl = `${base}/api/storage/objects${pdfPath.replace(/^\/objects/, "")}`;
     const coverUrl = `${base}/api/storage/objects${coverPdfPath.replace(/^\/objects/, "")}`;
 
@@ -166,7 +171,7 @@ router.post("/books/:id/lulu-order", async (req, res): Promise<void> => {
     return;
   }
 
-  const base = getPublicBaseUrl();
+  const base = getPublicBaseUrl(req);
   const interiorUrl = `${base}/api/storage/objects${book.pdfPath!.replace(/^\/objects/, "")}`;
   const coverUrl = `${base}/api/storage/objects${book.coverPdfPath!.replace(/^\/objects/, "")}`;
 

@@ -8,6 +8,11 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Trust the loopback proxy (Apache/NGINX → 127.0.0.1:8088). Lets req.protocol
+// reflect the original `https` from X-Forwarded-Proto, so generated URLs
+// (e.g. PDF preview links) use the public scheme + host instead of `http://localhost`.
+app.set("trust proxy", "loopback");
+
 app.use(
   pinoHttp({
     logger,

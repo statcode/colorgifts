@@ -96,7 +96,7 @@ router.get("/admin/books", requireAdmin, async (_req: Request, res: Response): P
 });
 
 router.patch("/admin/books/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const allowed = ["title", "subtitle", "dedication", "style", "status", "coverTemplate", "coverTagline"];
   const update: Record<string, unknown> = {};
@@ -112,7 +112,7 @@ router.patch("/admin/books/:id", requireAdmin, async (req: Request, res: Respons
 });
 
 router.delete("/admin/books/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await cascadeDeleteBook(id, req.log);
   res.json({ success: true });
@@ -124,7 +124,7 @@ router.get("/admin/pages", requireAdmin, async (_req: Request, res: Response): P
 });
 
 router.patch("/admin/pages/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const allowed = ["caption", "status", "sortOrder"];
   const update: Record<string, unknown> = {};
@@ -140,7 +140,7 @@ router.patch("/admin/pages/:id", requireAdmin, async (req: Request, res: Respons
 });
 
 router.delete("/admin/pages/:id", requireAdmin, async (req: Request, res: Response): Promise<void> => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await deletePageWithFile(id, req.log);
   res.json({ success: true });
