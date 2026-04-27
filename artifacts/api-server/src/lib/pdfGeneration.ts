@@ -40,7 +40,7 @@ interface TemplateConfig {
 
 const TEMPLATES: Record<CoverTemplate, TemplateConfig> = {
   classic: {
-    bgColor: rgb(0.97, 0.97, 0.95),
+    bgColor: rgb(1, 1, 1),
     titleColor: rgb(0.08, 0.08, 0.08),
     subtitleColor: rgb(0.35, 0.35, 0.35),
     taglineColor: rgb(0.5, 0.5, 0.5),

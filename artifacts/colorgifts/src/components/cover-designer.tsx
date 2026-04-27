@@ -22,7 +22,7 @@ export const COVER_TEMPLATES: CoverTemplateConfig[] = [
     id: "classic",
     name: "Classic",
     description: "Timeless & elegant",
-    bg: "#F9F9F6",
+    bg: "#FFFFFF",
     border: "#4A4A4A",
     titleColor: "#141414",
     subtitleColor: "#555",
