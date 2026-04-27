@@ -9,12 +9,16 @@ Object.assign(
   loadEnv(process.env.NODE_ENV ?? "development", path.resolve(import.meta.dirname, "..", ".."), ""),
 );
 
-const rawPort = process.env.PORT || "5173";
+// Frontend dev server port. Separate from PORT (which is the API backend port)
+// so `pnpm start:back` and `pnpm start:front` don't collide on the same number.
+const rawPort = process.env.FRONTEND_PORT || "5173";
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  throw new Error(`Invalid FRONTEND_PORT value: "${rawPort}"`);
 }
+
+const apiPort = process.env.PORT || "8088";
 
 const basePath = process.env.BASE_PATH || "/";
 
@@ -64,7 +68,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: `http://localhost:${apiPort}`,
         changeOrigin: true,
       },
     },
