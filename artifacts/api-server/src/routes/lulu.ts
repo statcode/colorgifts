@@ -40,9 +40,12 @@ function getPublicBaseUrl(req: Request): string {
   if (process.env.REPLIT_DEV_DOMAIN) {
     return `https://${process.env.REPLIT_DEV_DOMAIN}`;
   }
-  // Behind Apache/NGINX proxy these read X-Forwarded-Proto / X-Forwarded-Host
-  // because app.ts sets `trust proxy`. Locally they're the dev host directly.
-  return `${req.protocol}://${req.get("host")}`;
+  // Behind Apache/NGINX, ProxyPreserveHost passes the original Host. If a
+  // proxy strips it instead, fall back to X-Forwarded-Host (req.hostname reads
+  // it when trust proxy is set in app.ts).
+  const forwardedHost = req.get("x-forwarded-host");
+  const host = forwardedHost || req.get("host");
+  return `${req.protocol}://${host}`;
 }
 
 router.post("/books/:id/generate-pdf", async (req, res): Promise<void> => {
