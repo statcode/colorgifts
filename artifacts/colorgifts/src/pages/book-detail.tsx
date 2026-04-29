@@ -442,6 +442,22 @@ function BookDetailContent() {
     }
   };
 
+  const handleOrderClick = () => {
+    // Lulu's print API rejects books with fewer than 2 ready coloring pages,
+    // so block checkout here with a clear message instead of letting the user
+    // hit the failure deeper in the flow.
+    const readyPageCount = pages?.filter(p => p.status === ColoringPageStatus.ready && p.coloringImagePath).length ?? 0;
+    if (readyPageCount < 2) {
+      toast({
+        title: "Need at least 2 photos",
+        description: `This book has ${readyPageCount} ready ${readyPageCount === 1 ? "page" : "pages"}. Add at least ${2 - readyPageCount} more photo${2 - readyPageCount === 1 ? "" : "s"} below to place an order.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setLocation(`/books/${bookId}/checkout`);
+  };
+
   const handleRegeneratePage = async (pageId: number) => {
     try {
       await regeneratePage.mutateAsync({ id: pageId });
@@ -533,11 +549,14 @@ function BookDetailContent() {
                   Full Preview
                 </Link>
               </Button>
-              <Button asChild size="lg" className="rounded-full h-14 px-8 text-lg bg-accent text-accent-foreground hover:bg-accent/90 shadow-md hover:shadow-lg transition-all" disabled={book.status !== "ready"}>
-                <Link href={`/books/${book.id}/checkout`} className={book.status !== "ready" ? "pointer-events-none opacity-50" : ""}>
-                  <ShoppingCart className="w-5 h-5 mr-2" />
-                  Order Gift
-                </Link>
+              <Button
+                size="lg"
+                className="rounded-full h-14 px-8 text-lg bg-accent text-accent-foreground hover:bg-accent/90 shadow-md hover:shadow-lg transition-all"
+                disabled={book.status !== "ready"}
+                onClick={handleOrderClick}
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" />
+                Order Gift
               </Button>
               <Button variant="outline" size="icon" className="rounded-full h-14 w-14 border-2 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" onClick={async () => {
                 if(confirm("Are you sure you want to delete this book? This action cannot be undone.")) {
