@@ -160,6 +160,32 @@ type Step1Values = z.infer<typeof step1Schema>;
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// Persist step-1 form values across the auth round-trip. Clerk's social-login
+// flows hard-navigate the page (OAuth → external site → back to us), so the
+// in-memory `pendingDataRef` alone isn't enough — we also need a sessionStorage
+// fallback to repopulate the form when the component remounts after auth.
+const FORM_STORAGE_KEY = "colorgifts:create-book-step1";
+
+function getInitialStep1Values(): Step1Values {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = sessionStorage.getItem(FORM_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          title: typeof parsed.title === "string" ? parsed.title : "",
+          subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : "",
+          dedication: typeof parsed.dedication === "string" ? parsed.dedication : "",
+          style: parsed.style && Object.values(BookStyle).includes(parsed.style)
+            ? parsed.style
+            : BookStyle.cartoon,
+        };
+      }
+    } catch {}
+  }
+  return { title: "", subtitle: "", dedication: "", style: BookStyle.cartoon };
+}
+
 export default function CreateBook() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -275,12 +301,7 @@ export default function CreateBook() {
 
   const form = useForm<Step1Values>({
     resolver: zodResolver(step1Schema),
-    defaultValues: {
-      title: "",
-      subtitle: "",
-      dedication: "",
-      style: BookStyle.cartoon
-    }
+    defaultValues: getInitialStep1Values(),
   });
 
   const proceedWithBookCreation = async (data: Step1Values) => {
@@ -293,6 +314,7 @@ export default function CreateBook() {
           style: data.style as CreateBookBodyStyle
         }
       });
+      try { sessionStorage.removeItem(FORM_STORAGE_KEY); } catch {}
       setBookId(book.id);
       setStep(2);
       window.scrollTo(0, 0);
@@ -308,6 +330,7 @@ export default function CreateBook() {
   const onSubmitStep1 = async (data: Step1Values) => {
     if (!isSignedIn) {
       pendingDataRef.current = data;
+      try { sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data)); } catch {}
       setShowAuthModal(true);
       return;
     }
@@ -321,6 +344,22 @@ export default function CreateBook() {
       pendingDataRef.current = null;
       proceedWithBookCreation(data);
     }
+  }, [isSignedIn]);
+
+  // After an OAuth round-trip the page remounts, so `pendingDataRef` is gone
+  // but sessionStorage still has the step-1 values. If we're freshly signed in
+  // and have saved data, resume book creation automatically.
+  useEffect(() => {
+    if (!isSignedIn || step !== 1 || pendingDataRef.current || showAuthModal) return;
+    let saved: string | null = null;
+    try { saved = sessionStorage.getItem(FORM_STORAGE_KEY); } catch {}
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved) as Step1Values;
+      if (!data.title?.trim()) return;
+      sessionStorage.removeItem(FORM_STORAGE_KEY);
+      proceedWithBookCreation(data);
+    } catch {}
   }, [isSignedIn]);
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -1377,7 +1416,18 @@ export default function CreateBook() {
       </div>
 
       {/* Auth Modal */}
-      <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
+      <Dialog
+        open={showAuthModal}
+        onOpenChange={(open) => {
+          if (!open) {
+            // User dismissed the modal without authenticating — drop the
+            // pending submit so we don't auto-resume on a future sign-in.
+            pendingDataRef.current = null;
+            try { sessionStorage.removeItem(FORM_STORAGE_KEY); } catch {}
+          }
+          setShowAuthModal(open);
+        }}
+      >
         <DialogContent className="p-0 border-0 bg-transparent shadow-none max-w-fit overflow-visible">
           <DialogTitle className="sr-only">Sign up to continue</DialogTitle>
           <div className="flex flex-col items-center gap-4">
@@ -1385,12 +1435,16 @@ export default function CreateBook() {
               <SignUp
                 routing="hash"
                 signInUrl={`${basePath}/sign-in`}
+                fallbackRedirectUrl={`${basePath}/create-book`}
+                signInFallbackRedirectUrl={`${basePath}/create-book`}
                 appearance={{ elements: { rootBox: "shadow-2xl rounded-[2rem] overflow-hidden" } }}
               />
             ) : (
               <SignIn
                 routing="hash"
                 signUpUrl={`${basePath}/sign-up`}
+                fallbackRedirectUrl={`${basePath}/create-book`}
+                signUpFallbackRedirectUrl={`${basePath}/create-book`}
                 appearance={{ elements: { rootBox: "shadow-2xl rounded-[2rem] overflow-hidden" } }}
               />
             )}
