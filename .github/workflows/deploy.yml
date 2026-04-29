@@ -1,0 +1,38 @@
+name: Deploy to Cloudways
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:    # adds a "Run workflow" button to the Actions tab
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false   # let an in-flight deploy finish before starting another
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.CLOUDWAYS_HOST }}
+          username: ${{ secrets.CLOUDWAYS_USER }}
+          key: ${{ secrets.CLOUDWAYS_SSH_KEY }}
+          port: 22
+          command_timeout: 15m
+          script: |
+            set -e
+            # Non-interactive SSH on Cloudways doesn't auto-source nvm, so pnpm
+            # / pm2 / node aren't on PATH by default — source it manually.
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            cd ~/public_html
+            git pull origin main
+            pnpm install --frozen-lockfile
+            pnpm build:front
+            pnpm build:back
+            pm2 restart colorgifts-api
+            pm2 save
+            echo "Deploy complete: $(git rev-parse --short HEAD)"
