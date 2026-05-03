@@ -66,7 +66,7 @@ export default function Home() {
                   <span>From 2 to 100 photos — you decide</span>
                 </div>
               </div>
-              <h1 className="text-5xl lg:text-7xl font-serif font-bold text-foreground leading-[1.1] mb-6">
+              <h1 className="text-5xl lg:text-6xl xl:text-7xl font-serif font-bold text-foreground leading-[1.1] mb-6">
                 The photos on your phone <span className="text-primary italic">deserve</span> to be colored in.
               </h1>
               <p className="text-lg lg:text-xl text-muted-foreground mb-6 leading-relaxed">
@@ -118,54 +118,68 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex items-end gap-2 w-full">
-                {/* Stage 1: Color Photos */}
-                <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-[4/5]">
-                    <img
-                      src={heroStep1}
-                      alt="Your personal color photos"
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Your Photos</span>
-                </div>
-
-                {/* Arrow 1 */}
-                <div className="shrink-0 pb-6">
-                  <ChevronRight className="w-6 h-6 text-primary" strokeWidth={2.5} />
-                </div>
-
-                {/* Stage 2: Coloring Pages */}
-                <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-[4/5]">
-                    <img
-                      src={heroStep2}
-                      alt="AI-generated coloring pages"
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground whitespace-nowrap">Coloring Pages</span>
-                </div>
-
-                {/* Arrow 2 */}
-                <div className="shrink-0 pb-6">
-                  <ChevronRight className="w-6 h-6 text-primary" strokeWidth={2.5} />
-                </div>
-
-                {/* Stage 3: Physical Book */}
-                <div className="flex flex-col items-center gap-2 flex-1 min-w-0">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-xl border-2 border-white/60 bg-white aspect-[4/5] ring-2 ring-primary/30">
-                    <img
-                      src={heroStep3}
-                      alt="Your printed coloring book"
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-primary/80 to-transparent p-2 text-center">
-                      <span className="text-white text-[10px] font-bold uppercase tracking-wider">Printed Book</span>
+              {/* Hero showcase: large feature image + 2 supporting tiles */}
+              <div className="grid grid-cols-2 gap-3 lg:gap-4">
+                {/* Featured: printed book — spans 2 cols, larger */}
+                <div className="col-span-2 relative overflow-hidden rounded-3xl shadow-2xl border-4 border-white/70 bg-white aspect-[16/10] ring-2 ring-primary/30 group">
+                  <img
+                    src={heroStep3}
+                    alt="Your printed coloring book"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-primary/70 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-3">
+                    <div>
+                      <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest mb-0.5">The final gift</p>
+                      <p className="text-white font-serif font-bold text-xl lg:text-2xl leading-tight">Printed Coloring Book</p>
                     </div>
+                    <span className="shrink-0 inline-flex items-center gap-1 bg-white/90 backdrop-blur text-primary text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full">
+                      <BookOpen className="w-3 h-3" />
+                      Hardcover
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary whitespace-nowrap">Your Book</span>
+                </div>
+
+                {/* Supporting tile 1: original photos */}
+                <div className="relative overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-square group">
+                  <img
+                    src={heroStep1}
+                    alt="Your personal color photos"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute top-2 left-2 inline-flex items-center gap-1 bg-white/95 backdrop-blur text-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
+                    <Camera className="w-3 h-3 text-primary" />
+                    Your Photos
+                  </div>
+                </div>
+
+                {/* Supporting tile 2: coloring pages */}
+                <div className="relative overflow-hidden rounded-2xl shadow-lg border-2 border-white/60 bg-white aspect-square group">
+                  <img
+                    src={heroStep2}
+                    alt="AI-generated coloring pages"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute top-2 left-2 inline-flex items-center gap-1 bg-white/95 backdrop-blur text-foreground text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
+                    <Wand2 className="w-3 h-3 text-primary" />
+                    Coloring Pages
+                  </div>
+                </div>
+              </div>
+
+              {/* Trust strip below images — fills vertical height */}
+              <div className="mt-5 lg:mt-6 grid grid-cols-3 gap-2 lg:gap-3">
+                <div className="flex flex-col items-center text-center p-3 rounded-2xl bg-card/70 backdrop-blur border border-border">
+                  <span className="text-xl lg:text-2xl font-serif font-bold text-primary leading-none">2–100</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Photos</span>
+                </div>
+                <div className="flex flex-col items-center text-center p-3 rounded-2xl bg-card/70 backdrop-blur border border-border">
+                  <span className="text-xl lg:text-2xl font-serif font-bold text-primary leading-none">5–7</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Days to Ship</span>
+                </div>
+                <div className="flex flex-col items-center text-center p-3 rounded-2xl bg-card/70 backdrop-blur border border-border">
+                  <span className="text-xl lg:text-2xl font-serif font-bold text-primary leading-none">100%</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">Personalized</span>
                 </div>
               </div>
             </div>
