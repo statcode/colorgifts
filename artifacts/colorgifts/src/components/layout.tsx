@@ -87,15 +87,30 @@ function ClerkNavLinks({ render }: { render: (links: NavLink[]) => React.ReactNo
 
 function MobileAuthLinks({ onClose }: { onClose: () => void }) {
   const { isSignedIn } = useAuth();
-  if (isSignedIn) return null;
+  const { signOut } = useClerk();
+  if (!isSignedIn) {
+    return (
+      <Link
+        href="/sign-in"
+        onClick={onClose}
+        className="text-2xl font-serif font-medium text-foreground"
+      >
+        Log in
+      </Link>
+    );
+  }
   return (
-    <Link
-      href="/sign-in"
-      onClick={onClose}
-      className="text-2xl font-serif font-medium text-foreground"
+    <button
+      type="button"
+      onClick={() => {
+        onClose();
+        signOut({ redirectUrl: "/" });
+      }}
+      className="flex items-center gap-2 text-2xl font-serif font-medium text-destructive text-left"
     >
-      Log in
-    </Link>
+      <LogOut className="w-5 h-5" />
+      Sign Out
+    </button>
   );
 }
 
